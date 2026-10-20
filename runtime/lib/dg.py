@@ -9,6 +9,7 @@
   config [键 值]           查看或修改设置，如：config thresholdGB 20
   review                   重新打开最近一次的审查页面
   uninstall                关闭后台监控（--purge 同时删除设置和扫描记录）
+  version                  版本与官方来源
 """
 import json
 import os
@@ -19,7 +20,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import (APP_DIR, CONFIG, DG_HOME, disk_status, human, latest_run, load_config, new_run_dir,  # noqa: E402
+from common import (OFFICIAL, VERSION, APP_DIR, CONFIG, DG_HOME, disk_status, human, latest_run, load_config, new_run_dir,  # noqa: E402
                     save_config)
 
 LABEL = "com.rabbittux.purrge"
@@ -225,7 +226,11 @@ def main():
     cmds = {"install": cmd_install, "setup": cmd_setup, "scan": cmd_scan, "run": cmd_run, "check": cmd_check,
             "review": cmd_review, "config": cmd_config, "status": cmd_status, "engine": cmd_engine,
             "uninstall": cmd_uninstall}
+    if len(sys.argv) > 1 and sys.argv[1] in ("version", "--version", "-v"):
+        print(f"Purrge {VERSION} by RabbittuX（官方来源：{OFFICIAL}）")
+        return
     if len(sys.argv) < 2 or sys.argv[1] not in cmds:
+        print(f"Purrge {VERSION} by RabbittuX（官方来源：{OFFICIAL}）")
         print(__doc__)
         return
     DG_HOME.mkdir(parents=True, exist_ok=True)

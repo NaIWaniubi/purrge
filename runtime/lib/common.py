@@ -6,6 +6,9 @@ import subprocess
 import time
 from pathlib import Path
 
+VERSION = "0.2.2"
+OFFICIAL = "GitHub RabbittuX/purrge"     # 唯一官方来源
+
 HOME = Path.home()
 DG_HOME = Path(os.environ.get("PURRGE_HOME", HOME / ".purrge"))
 APP_DIR = Path(__file__).resolve().parent.parent          # runtime/

@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 import engines
-from common import APP_DIR, CONFIG, DG_HOME, disk_status, human, load_config, save_config
+from common import APP_DIR, CONFIG, DG_HOME, OFFICIAL, VERSION, disk_status, human, load_config, save_config
 
 INSTALLED_APP = DG_HOME / "app"
 CLI_LINK = Path.home() / ".local/bin/purrge"
@@ -184,7 +184,8 @@ def cmd_install(args):
     from dg import has_full_disk_access, install_monitor, migrate_from_disk_guard
     if sys.platform != "darwin":
         fail("Purrge 目前只支持 macOS")
-    say(f"\n{B}🐾 Purrge by RabbittuX{X}  {D}磁盘快满时提醒你，AI 帮你看清哪些能删，你点头了才清理{X}")
+    say(f"\n{B}🐾 Purrge {VERSION} by RabbittuX{X}  {D}官方来源：{OFFICIAL}{X}")
+    say(f"{D}基于 AI 的 macOS 磁盘空间管理工具：低空间预警、智能识别可清理项、经用户审批后执行清理{X}")
     migrate_from_disk_guard()
     cfg = load_config()
     engine = choose_engine(args)

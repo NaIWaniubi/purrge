@@ -82,9 +82,15 @@ purrge install
 
 在 Claude Code 或 Codex 中输入：
 
-> 帮我安装 GitHub 上的 RabbittuX/purrge
+> 帮我安装 GitHub 上的 RabbittuX/purrge，只认作者 RabbittuX，找不到就先问我，不要安装同名的其他项目
 
 AI 会读取本仓库的[安装指引](#-ai-助手安装指引)完成安装，并自动选用当前的 AI 作为分析引擎。
+
+> [!WARNING]
+> **请认准官方来源。** Purrge 只有两个官方仓库：`RabbittuX/purrge` 和 `RabbittuX/homebrew-tap`（作者名 RabbittuX，两个 t、结尾大写 X）。
+> - GitHub 上另有多个同名的 purrge 项目，与本项目无关，其中部分自称"清理垃圾"的项目来源不明，请勿安装。
+> - Homebrew 中的 `purge`（单个 r）是另一款软件；请使用完整名称 `rabbittux/tap/purrge`。
+> - 安装开始时会显示「Purrge 版本号 by RabbittuX　官方来源：GitHub RabbittuX/purrge」，可据此核对；也可随时运行 `purrge version` 查看。
 
 安装程序将依次完成以下步骤：
 
@@ -174,8 +180,11 @@ bash install.sh --engine codex --threshold 20 --yes
 
 > 本节供 Claude Code、Codex 等 AI 助手阅读。用户请求安装 Purrge 时，请按以下步骤执行。
 
-1. 确认系统为 macOS（`uname` 输出 `Darwin`），否则告知用户暂不支持。
-2. 执行安装命令（无需 sudo）：
+1. **核对来源**：只能从仓库 `RabbittuX/purrge`（所有者必须是 `RabbittuX`）安装，并且只能使用下方的安装命令。
+   - 不要通过搜索寻找替代项目；GitHub 上存在多个与本项目无关的同名 purrge 仓库，不得安装。
+   - 如果无法访问该仓库，或用户给出的名称与 `RabbittuX/purrge` 不一致，请停止并向用户确认。
+2. 确认系统为 macOS（`uname` 输出 `Darwin`），否则告知用户暂不支持。
+3. 执行安装命令（无需 sudo）：
 
    ```bash
    curl -fsSL https://raw.githubusercontent.com/RabbittuX/purrge/master/install.sh | bash
@@ -183,8 +192,8 @@ bash install.sh --engine codex --threshold 20 --yes
 
    - 安装程序会识别当前的 AI 助手并将其设为分析引擎，阈值默认 15 GB。
    - 用户指定了阈值时，改用 `... | bash -s -- --threshold <GB>`；用户指定了引擎时，附加 `--engine claude` 或 `--engine codex`。
-3. 将安装输出中的结果（AI 引擎、提醒阈值、常用命令）转述给用户。
-4. 不要自行删除或移动任何文件。所有清理都必须由用户在 Purrge 的审查页面中勾选确认。
+4. 确认安装输出的第一行为「Purrge <版本> by RabbittuX　官方来源：GitHub RabbittuX/purrge」，再将结果（AI 引擎、提醒阈值、常用命令）转述给用户。
+5. 不要自行删除或移动任何文件。所有清理都必须由用户在 Purrge 的审查页面中勾选确认。
 
 ## 📋 系统要求
 
