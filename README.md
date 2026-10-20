@@ -4,9 +4,9 @@
 
 # Purrge
 
-**磁盘快满时提醒你，AI 帮你看清哪些能删，你点头了才清理。**
+**基于 AI 的 macOS 磁盘空间管理工具：低空间预警、智能识别可清理项、经用户审批后执行清理。**
 
-<sub>purr（猫咪呼噜）+ purge（清除）· by RabbittuX</sub>
+<sub>名称取自 purr（猫咪呼噜）与 purge（清除）· by RabbittuX</sub>
 
 <br>
 
@@ -20,69 +20,69 @@
 
 <br>
 
-## ✨ 它能做什么
+## ✨ 核心功能
 
 <table>
 <tr>
 <td width="33%" valign="top">
 
-**🔔 自动提醒**
+**🔔 低空间预警**
 
-后台每 30 分钟看一眼剩余空间，低于阈值才弹窗。不调用 AI、不耗额度。
-
-</td>
-<td width="33%" valign="top">
-
-**🧠 AI 逐项判断**
-
-用你自己的 Claude Code 或 Codex，把缓存、安装包、大视频、旧项目逐项说清楚：是什么、多久没用、删了有什么影响。
+后台服务定时检测磁盘剩余空间，低于设定阈值时发出提醒。检测过程不调用 AI，不消耗额度。
 
 </td>
 <td width="33%" valign="top">
 
-**✅ 你说了算**
+**🧠 AI 智能分析**
 
-可重建的缓存默认勾选，你的文件默认不选。只清理你勾选并确认的，AI 没有删除权限。
+调用本机的 Claude Code 或 Codex，对缓存、安装包、媒体文件及历史项目逐项评估，说明其用途、闲置时长及清理影响。
+
+</td>
+<td width="33%" valign="top">
+
+**✅ 用户审批**
+
+可重建的缓存默认选中，用户文件默认不选。仅执行用户勾选并确认的清理项，AI 不具备删除权限。
 
 </td>
 </tr>
 </table>
 
-## 📸 截图
+## 📸 界面预览
 
 <table>
 <tr>
 <td width="50%" valign="top">
-<img src="docs/screenshots/popup-card.png" alt="空间不足提醒">
-<p align="center"><b>空间不足时弹窗</b><br><sub>点「帮我看看」开始扫描，扫完自动打开审查页</sub></p>
+<img src="docs/screenshots/popup-card.png" alt="低空间提醒">
+<p align="center"><b>低空间提醒</b><br><sub>选择「帮我看看」即开始扫描，完成后自动打开审查页面</sub></p>
 </td>
 <td width="50%" valign="top">
 <img src="docs/screenshots/settings.png" alt="设置面板">
-<p align="center"><b>设置面板</b><br><sub>阈值、检查频率、提醒冷却，保存立即生效</sub></p>
+<p align="center"><b>设置面板</b><br><sub>可调整阈值、检查频率与提醒间隔，保存后即时生效</sub></p>
 </td>
 </tr>
 <tr>
 <td colspan="2">
-<img src="docs/screenshots/list.png" alt="需要你决定的项目">
-<p align="center"><b>需要你决定的项目</b><br><sub>按类型筛选；点「打开文件夹 / 在访达中定位」先去看看里面是什么</sub></p>
+<img src="docs/screenshots/list.png" alt="待确认项目">
+<p align="center"><b>待确认项目</b><br><sub>支持按类别筛选，可通过「打开文件夹 / 在访达中定位」预先查看内容</sub></p>
 </td>
 </tr>
 </table>
 
 ## 🚀 安装
 
-打开「终端」，粘贴这一行：
+在「终端」中执行以下命令：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/RabbittuX/purrge/master/install.sh | bash
 ```
 
-安装程序会一步步带你完成：
+安装程序将依次完成以下步骤：
 
-1. **选择 AI**：Claude Code 或 Codex，用哪个就选哪个
-2. **设提醒阈值**：剩余空间低于多少 GB 时提醒你，默认 15
-3. **准备 AI**：没装会自动装最新版；没登录会打开浏览器让你登录；最后发一句话测试能不能正常回复
-4. **开启后台监控**：装好后不用开着 Claude Code 或 Codex，Purrge 会自己在后台运行
+1. **选择 AI 引擎**：Claude Code 或 Codex。
+2. **设置提醒阈值**：剩余空间低于该值时发出提醒，默认 15 GB。
+3. **配置 AI 引擎**：未安装时自动安装最新版本；未登录时打开浏览器完成登录；最后进行连接测试，确认引擎可正常响应。
+4. **启用后台监控**：安装完成后，Purrge 以后台服务形式独立运行，无需保持 Claude Code 或 Codex 处于打开状态。
 
 <details>
 <summary>其他安装方式</summary>
@@ -91,90 +91,90 @@ curl -fsSL https://raw.githubusercontent.com/RabbittuX/purrge/master/install.sh 
 git clone https://github.com/RabbittuX/purrge.git
 cd purrge && bash install.sh
 
-# 不想回答问题，直接指定：
+# 非交互式安装：
 bash install.sh --engine codex --threshold 20 --yes
 ```
 
 </details>
 
-## 🐾 怎么用
+## 🐾 使用方法
 
-| 你想做的 | 在终端里 | 或者直接跟 Claude Code / Codex 说 |
+| 操作 | 终端命令 | 在 Claude Code / Codex 中的自然语言指令 |
 |---|---|---|
-| 立即扫描清理 | `purrge scan` | "磁盘快满了，帮我清理一下" |
+| 立即扫描 | `purrge scan` | "磁盘快满了，帮我清理一下" |
 | 查看状态 | `purrge status` | "硬盘还剩多少" |
 | 修改阈值 | `purrge config thresholdGB 20` | "阈值改成 20G" |
-| 换一个 AI | `purrge engine codex` 或 `purrge engine claude` | |
-| 关闭提醒 | `purrge uninstall` | "关掉磁盘提醒" |
+| 切换 AI 引擎 | `purrge engine codex` 或 `purrge engine claude` | — |
+| 停用提醒 | `purrge uninstall` | "关掉磁盘提醒" |
 
-也可以直接在审查页右上角的「设置」里改阈值、检查频率等。
+阈值、检查频率等参数也可在审查页面右上角的「设置」中修改。
 
-## ⚙️ 工作方式
+## ⚙️ 工作原理
 
 ```text
-后台检查（每 30 分钟）──低于阈值──▶ 弹窗提醒 ──帮我看看──▶ 扫描（约 10 秒）
+后台检测（每 30 分钟）──低于阈值──▶ 提醒用户 ──用户同意──▶ 扫描（约 10 秒）
                                                             │
-     清理你勾选的 ◀──确认── 审查页面 ◀── AI 逐项判断（约 30～60 秒）
+      执行清理 ◀──用户确认── 审查页面 ◀── AI 逐项分析（约 30～60 秒）
 ```
 
-审查页把结果分成三组：
+审查页面将分析结果分为三类：
 
-| 分组 | 是什么 | 默认 | 怎么处理 |
+| 分类 | 范围 | 默认状态 | 处理方式 |
 |---|---|---|---|
-| 🟢 **首要清理** | 可自动重建的缓存（浏览器、npm、Xcode、剪映等） | 勾选 | 直接删除 |
-| 🟡 **需要你决定** | 你的文件、重建代价大的内容 | 不选 | 移到废纸篓（可在设置里改成直接删除） |
-| 🔒 **不会清理** | 保护名单、版本库、正在用的项目 | 不能选 | 只展示 |
+| 🟢 **首要清理** | 可自动重建的缓存（浏览器、npm、Xcode、剪映等） | 已选中 | 直接删除 |
+| 🟡 **需要你决定** | 用户文件及重建成本较高的内容 | 未选中 | 移至废纸篓（可在设置中改为直接删除） |
+| 🔒 **不会清理** | 保护名单内的路径、版本库、使用中的项目 | 不可选 | 仅作展示 |
 
 <details>
 <summary>扫描范围</summary>
 
-- 已知缓存规则库：浏览器、npm / pip / Homebrew、Xcode、剪映、各类 IDE 等
-- `~/Library/Caches` 下的大缓存目录
-- Spotlight 找出的 500 MB 以上大文件
-- 下载、桌面、文稿、影片等常用目录里 1 GB 以上的大文件夹
+- 内置缓存规则库：浏览器、npm / pip / Homebrew、Xcode、剪映、常用 IDE 等
+- `~/Library/Caches` 下的大型缓存目录
+- 通过 Spotlight 检索的 500 MB 以上文件
+- 下载、桌面、文稿、影片等常用目录中 1 GB 以上的文件夹
 
 </details>
 
-## 🔒 安全设计
+## 🔒 安全机制
 
-- AI 只负责判断和写说明，**没有删除能力**：Claude Code 以禁用所有工具的方式运行，Codex 在只读沙箱里运行；删除由脚本严格按你的勾选清单执行。
-- 清理前逐项复核：路径还在、不在保护名单、文件扫描后没被改过，有任何一条不满足就跳过。
-- 保护名单优先级最高，AI 也改不了；你的文件永远不会进「首要清理」。
-- 审查页只在本机 `127.0.0.1` 打开，带一次性口令，完成或闲置 30 分钟后自动关闭。
+- **AI 仅提供分析，不具备删除权限**：Claude Code 在禁用全部工具的模式下运行，Codex 在只读沙箱中运行；删除操作由脚本严格依据用户勾选的清单执行。
+- **执行前逐项复核**：确认路径仍然存在、不在保护名单内、扫描后未被修改，任一条件不满足即跳过。
+- **保护名单优先**：保护名单的优先级高于 AI 判断；用户文件不会被归入「首要清理」。
+- **本地访问控制**：审查页面仅监听 `127.0.0.1` 并使用一次性令牌，清理完成或闲置 30 分钟后自动关闭。
 
 <details>
 <summary>配置文件 <code>~/.purrge/config.json</code></summary>
 
-| 键 | 默认 | 说明 |
+| 配置项 | 默认值 | 说明 |
 |---|---|---|
-| `thresholdGB` | `15` | 剩余空间低于多少 GB 提醒 |
-| `intervalMinutes` | `30` | 后台检查间隔（分钟） |
-| `cooldownHours` | `6` | 提醒后多久内不再打扰（小时） |
-| `optionalAction` | `trash` | 「需要你决定」的项目：`trash` 移到废纸篓，`delete` 直接删除 |
-| `protect` | `[]` | 额外的保护路径，永不清理 |
-| `aiEngine` | 安装时选择 | `claude` 或 `codex`，用 `purrge engine` 切换 |
-| `claudeModel` / `codexModel` | 留空 | 指定模型；留空用默认，Codex 默认模型不可用时会自动换成你账号能用的 |
+| `thresholdGB` | `15` | 提醒阈值（GB） |
+| `intervalMinutes` | `30` | 后台检测间隔（分钟） |
+| `cooldownHours` | `6` | 提醒后的静默时长（小时） |
+| `optionalAction` | `trash` | 「需要你决定」类项目的处理方式：`trash` 移至废纸篓，`delete` 直接删除 |
+| `protect` | `[]` | 自定义保护路径，始终不予清理 |
+| `aiEngine` | 安装时选择 | AI 引擎：`claude` 或 `codex`，可通过 `purrge engine` 切换 |
+| `claudeModel` / `codexModel` | 空 | 指定模型；留空时使用默认模型，Codex 默认模型不可用时自动切换为账号可用的模型 |
 
 </details>
 
-## 📋 要求
+## 📋 系统要求
 
 - macOS
-- Python 3.8+（没有的话安装程序会提示你安装）
-- Claude Code 或 Codex 的账号（AI 判断用的是你自己的额度，Codex 免费账号也可以）。暂时用不了 AI 时会自动改成按规则判断，功能照常
-- 可选：给终端开「完全磁盘访问权限」，能扫到更多系统缓存
+- Python 3.8 及以上（未安装时，安装程序会给出提示）
+- Claude Code 或 Codex 账号（AI 分析使用用户自己的额度，支持 Codex 免费账号）。AI 暂时不可用时自动切换为规则判断，基础功能不受影响
+- 可选：为「终端」授予「完全磁盘访问权限」，以扩大系统缓存的扫描范围
 
-卸载：`purrge uninstall`（加 `--purge` 连设置和扫描记录一起删）。
+卸载：执行 `purrge uninstall`；附加 `--purge` 参数可同时删除配置与扫描记录。
 
 ## 📄 许可证
 
-[PolyForm Noncommercial 1.0.0](LICENSE)，**禁止商用**。
+本项目采用 [PolyForm Noncommercial 1.0.0](LICENSE) 许可证，**禁止商业使用**。
 
-- ✅ 个人使用、学习研究、修改、分享；学校、公益和非盈利组织也可以用
-- ❌ 任何商业用途：公司用来赚钱的业务、集成进收费产品或服务、改名后售卖
-- 分享或修改时请保留 LICENSE 文件和第一行的版权声明
+- ✅ 允许：个人使用、学习研究、修改及再分发；教育机构、公益及非营利组织亦可使用
+- ❌ 禁止：任何商业用途，包括用于企业营利业务、集成至收费产品或服务、更名后销售等
+- 再分发或修改时，须保留 LICENSE 文件及首行版权声明
 
-想商用请先在 [GitHub](https://github.com/RabbittuX) 联系作者获得授权。
+如需商业授权，请通过 [GitHub](https://github.com/RabbittuX) 联系作者。
 
 <div align="center">
 <br>
