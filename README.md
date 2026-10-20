@@ -29,7 +29,7 @@ macOS 磁盘空间不足时自动提醒；扫描**可再生缓存**和**占用�
 在 Claude Code 里依次输入：
 
 ```
-/plugin marketplace add <你的 GitHub 用户名>/purrge
+/plugin marketplace add RabbittuX/purrge
 /plugin install purrge@rabbittux
 /purrge:setup 15
 ```
