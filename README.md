@@ -10,7 +10,7 @@
 
 <br>
 
-<img src="https://img.shields.io/badge/macOS-only-1c1b22?style=flat-square&logo=apple&logoColor=white" alt="macOS"> <img src="https://img.shields.io/badge/Claude_Code-插件-f2a33a?style=flat-square" alt="Claude Code 插件"> <img src="https://img.shields.io/badge/License-PolyForm_Noncommercial-e5484d?style=flat-square" alt="License">
+<img src="https://img.shields.io/badge/macOS-only-1c1b22?style=flat-square&logo=apple&logoColor=white" alt="macOS"> <img src="https://img.shields.io/badge/AI-Claude_Code_%7C_Codex-f2a33a?style=flat-square" alt="AI：Claude Code 或 Codex"> <img src="https://img.shields.io/badge/License-PolyForm_Noncommercial-e5484d?style=flat-square" alt="License">
 
 <br>
 
@@ -35,7 +35,7 @@
 
 **🧠 AI 逐项判断**
 
-缓存、安装包、大视频、旧项目……每一项都告诉你是什么、多久没用、删了有什么影响。
+用你自己的 Claude Code 或 Codex，把缓存、安装包、大视频、旧项目逐项说清楚：是什么、多久没用、删了有什么影响。
 
 </td>
 <td width="33%" valign="top">
@@ -71,36 +71,43 @@
 
 ## 🚀 安装
 
-在 Claude Code 里依次输入：
+打开「终端」，粘贴这一行：
 
-```text
-/plugin marketplace add RabbittuX/purrge
-/plugin install purrge@rabbittux
-/purrge:setup 15
+```bash
+curl -fsSL https://raw.githubusercontent.com/RabbittuX/purrge/master/install.sh | bash
 ```
 
-`15` 是阈值，剩余空间低于 15 GB 时提醒，不写就是 15。装好后不用开着 Claude Code，后台会自己运行。
+安装程序会一步步带你完成：
+
+1. **选择 AI**：Claude Code 或 Codex，用哪个就选哪个
+2. **设提醒阈值**：剩余空间低于多少 GB 时提醒你，默认 15
+3. **准备 AI**：没装会自动装最新版；没登录会打开浏览器让你登录；最后发一句话测试能不能正常回复
+4. **开启后台监控**：装好后不用开着 Claude Code 或 Codex，Purrge 会自己在后台运行
 
 <details>
-<summary>不用 Claude Code 插件安装</summary>
+<summary>其他安装方式</summary>
 
 ```bash
 git clone https://github.com/RabbittuX/purrge.git
-cd purrge && bash install.sh 15
+cd purrge && bash install.sh
+
+# 不想回答问题，直接指定：
+bash install.sh --engine codex --threshold 20 --yes
 ```
 
 </details>
 
 ## 🐾 怎么用
 
-| 你想做的 | 命令 | 或者直接跟 Claude 说 |
+| 你想做的 | 在终端里 | 或者直接跟 Claude Code / Codex 说 |
 |---|---|---|
-| 立即扫描清理 | `/purrge:scan` | "磁盘快满了，帮我清理一下" |
-| 修改阈值 | `/purrge:config thresholdGB 20` | "阈值改成 20G" |
-| 查看状态 | `/purrge:status` | "硬盘还剩多少" |
-| 关闭提醒 | `/purrge:uninstall` | "关掉磁盘提醒" |
+| 立即扫描清理 | `purrge scan` | "磁盘快满了，帮我清理一下" |
+| 查看状态 | `purrge status` | "硬盘还剩多少" |
+| 修改阈值 | `purrge config thresholdGB 20` | "阈值改成 20G" |
+| 换一个 AI | `purrge engine codex` 或 `purrge engine claude` | |
+| 关闭提醒 | `purrge uninstall` | "关掉磁盘提醒" |
 
-也可以直接在审查页右上角的「设置」里改。
+也可以直接在审查页右上角的「设置」里改阈值、检查频率等。
 
 ## ⚙️ 工作方式
 
@@ -130,7 +137,7 @@ cd purrge && bash install.sh 15
 
 ## 🔒 安全设计
 
-- AI 只负责判断和写说明，**没有删除能力**；删除由脚本严格按你的勾选清单执行。
+- AI 只负责判断和写说明，**没有删除能力**：Claude Code 以禁用所有工具的方式运行，Codex 在只读沙箱里运行；删除由脚本严格按你的勾选清单执行。
 - 清理前逐项复核：路径还在、不在保护名单、文件扫描后没被改过，有任何一条不满足就跳过。
 - 保护名单优先级最高，AI 也改不了；你的文件永远不会进「首要清理」。
 - 审查页只在本机 `127.0.0.1` 打开，带一次性口令，完成或闲置 30 分钟后自动关闭。
@@ -145,17 +152,19 @@ cd purrge && bash install.sh 15
 | `cooldownHours` | `6` | 提醒后多久内不再打扰（小时） |
 | `optionalAction` | `trash` | 「需要你决定」的项目：`trash` 移到废纸篓，`delete` 直接删除 |
 | `protect` | `[]` | 额外的保护路径，永不清理 |
+| `aiEngine` | 安装时选择 | `claude` 或 `codex`，用 `purrge engine` 切换 |
+| `claudeModel` / `codexModel` | 留空 | 指定模型；留空用默认，Codex 默认模型不可用时会自动换成你账号能用的 |
 
 </details>
 
 ## 📋 要求
 
 - macOS
-- Python 3.8+（没有的话运行 `xcode-select --install`）
-- Claude Code 已安装并登录：AI 判断用的是你自己的额度；没有 Claude Code 也能用，会改成按规则判断
+- Python 3.8+（没有的话安装程序会提示你安装）
+- Claude Code 或 Codex 的账号（AI 判断用的是你自己的额度，Codex 免费账号也可以）。暂时用不了 AI 时会自动改成按规则判断，功能照常
 - 可选：给终端开「完全磁盘访问权限」，能扫到更多系统缓存
 
-卸载：`/purrge:uninstall purge`，再 `/plugin uninstall purrge`。
+卸载：`purrge uninstall`（加 `--purge` 连设置和扫描记录一起删）。
 
 ## 📄 许可证
 

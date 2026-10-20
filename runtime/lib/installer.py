@@ -1,0 +1,213 @@
+"""交互式安装：选 AI 引擎（Claude Code / Codex）→ 检查安装 → 检查登录 → 测试连接 → 设阈值 → 注册后台监控。
+用 /dev/tty 读输入，所以 `curl ... | bash` 方式运行也能正常提问。"""
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+import engines
+from common import APP_DIR, CONFIG, DG_HOME, disk_status, human, load_config, save_config
+
+INSTALLED_APP = DG_HOME / "app"
+CLI_LINK = Path.home() / ".local/bin/purrge"
+SKILL_DIRS = {"claude": Path.home() / ".claude/skills/purrge", "codex": Path.home() / ".codex/skills/purrge"}
+
+B, D, G, Y, R, X = "\033[1m", "\033[2m", "\033[32m", "\033[33m", "\033[31m", "\033[0m"
+
+
+def say(msg=""):
+    print(msg, flush=True)
+
+
+def ok(msg):
+    say(f"  {G}✓{X} {msg}")
+
+
+def warn(msg):
+    say(f"  {Y}!{X} {msg}")
+
+
+def fail(msg):
+    say(f"  {R}✗{X} {msg}")
+    sys.exit(1)
+
+
+def ask(prompt, default=""):
+    """从终端读一行；没有终端（比如被别的程序调用）时返回 None。"""
+    try:
+        with open("/dev/tty") as tin, open("/dev/tty", "w") as tout:
+            tout.write(prompt)
+            tout.flush()
+            ans = tin.readline()
+    except OSError:
+        return None
+    ans = ans.strip()
+    return ans if ans else default
+
+
+def _flag(args, name):
+    return args[args.index(name) + 1] if name in args and args.index(name) + 1 < len(args) else None
+
+
+def choose_engine(args):
+    eng = _flag(args, "--engine")
+    if eng in engines.NAMES:
+        return eng
+    say(f"\n{B}Purrge 用哪个 AI 来判断哪些东西能清理？{X}")
+    for i, e in enumerate(("claude", "codex"), 1):
+        p = engines.find(e)
+        state = f"{G}已安装 {engines.version_text(p)}{X}" if p else f"{D}未安装，会自动安装最新版{X}"
+        say(f"  {i}) {engines.NAMES[e]:<12} {state}")
+    ans = ask("请输入 1 或 2 [1]：", "1")
+    if ans is None:
+        fail("没有可交互的终端。请加参数指定：--engine claude 或 --engine codex")
+    return "codex" if ans.strip() in ("2", "codex", "Codex") else "claude"
+
+
+def ensure_engine(engine):
+    """确保引擎已安装、已登录，返回可执行文件路径。"""
+    name = engines.NAMES[engine]
+    path = engines.find(engine)
+    if path:
+        ok(f"已安装 {name} {engines.version_text(path)}（{path}）")
+    else:
+        warn(f"没有检测到 {name}，开始安装最新版…")
+        path = engines.install(engine, say=lambda m: say(f"    {m}"))
+        if not path:
+            fail(f"{name} 安装失败。请按官网说明手动安装后，重新运行安装命令。")
+        ok(f"{name} 安装完成 {engines.version_text(path)}")
+    state = engines.logged_in(engine, path)
+    if state is False:
+        warn(f"{name} 还没有登录，正在打开登录页面，请在浏览器里完成登录…")
+        engines.login(engine, path)
+        if engines.logged_in(engine, path) is False:
+            fail(f"{name} 仍未登录。登录后重新运行安装命令即可。")
+        ok(f"{name} 登录成功")
+    elif state:
+        ok(f"{name} 已登录")
+    return path
+
+
+def connect(cfg, engine, path):
+    """测一次 AI 连接；版本太旧会自动升级，没登录会拉起登录。返回是否可用。"""
+    name = engines.NAMES[engine]
+    say(f"  … 正在测试 {name} 能否正常回复（约 10～30 秒）")
+    good, model, err = engines.test(cfg, log=lambda m: say(f"    {m}"))
+    low = err.lower()
+    if not good and "newer version" in low:
+        warn(f"{name} 版本太旧，正在升级到最新版…")
+        cfg[f"{engine}Path"] = engines.upgrade(engine, path, say=lambda m: say(f"    {m}")) or path
+        good, model, err = engines.test(cfg, log=lambda m: say(f"    {m}"))
+        low = err.lower()
+    if not good and any(k in low for k in ("login", "log in", "auth", "401", "unauthorized")):
+        warn(f"{name} 需要重新登录，正在打开登录页面…")
+        engines.login(engine, cfg[f"{engine}Path"])
+        good, model, err = engines.test(cfg, log=lambda m: say(f"    {m}"))
+    if good:
+        cfg[f"{engine}Model"] = model
+        ok(f"{name} 连接正常" + (f"，使用模型 {model}" if model else ""))
+    else:
+        warn(f"{name} 暂时没法回复：{err[:160]}")
+        warn("先改用规则判断，功能照常可用；问题解决后运行 `purrge engine " + engine + "` 重新连接")
+    return good
+
+
+def copy_runtime():
+    if APP_DIR.resolve() != INSTALLED_APP.resolve():
+        if INSTALLED_APP.exists():
+            shutil.rmtree(INSTALLED_APP)
+        shutil.copytree(APP_DIR, INSTALLED_APP, ignore=shutil.ignore_patterns("__pycache__"))
+    os.chmod(INSTALLED_APP / "bin/purrge", 0o755)
+
+
+def link_cli():
+    CLI_LINK.parent.mkdir(parents=True, exist_ok=True)
+    if CLI_LINK.is_symlink() or CLI_LINK.exists():
+        CLI_LINK.unlink()
+    CLI_LINK.symlink_to(INSTALLED_APP / "bin/purrge")
+    on_path = str(CLI_LINK.parent) in os.environ.get("PATH", "").split(":")
+    return on_path
+
+
+def install_skill(engine):
+    """让 Claude Code / Codex 能听懂"帮我清理磁盘"：放一个说明文件，只调用 purrge 命令，不直接删文件。"""
+    src = INSTALLED_APP / "integrations/SKILL.md"
+    if not src.exists() or not SKILL_DIRS[engine].parent.parent.exists():
+        return False
+    SKILL_DIRS[engine].mkdir(parents=True, exist_ok=True)
+    shutil.copy2(src, SKILL_DIRS[engine] / "SKILL.md")
+    return True
+
+
+def apply_engine(cfg, engine):
+    path = ensure_engine(engine)
+    cfg["aiEngine"], cfg[f"{engine}Path"] = engine, path
+    connect(cfg, engine, path)
+    return cfg
+
+
+def cmd_install(args):
+    from dg import has_full_disk_access, install_monitor, migrate_from_disk_guard
+    if sys.platform != "darwin":
+        fail("Purrge 目前只支持 macOS")
+    say(f"\n{B}🐾 Purrge by RabbittuX{X}  {D}磁盘快满时提醒你，AI 帮你看清哪些能删，你点头了才清理{X}")
+    migrate_from_disk_guard()
+    cfg = load_config()
+    engine = choose_engine(args)
+
+    # 先把要问的都问完，再调用 AI 命令行（它们运行时会占用终端，提前敲的字会丢）
+    say(f"\n{B}1/3 提醒阈值{X}")
+    th = _flag(args, "--threshold")
+    if th is None:
+        free, total = disk_status()
+        cur = f"{cfg['thresholdGB']:g}"
+        th = ask(f"  当前剩余 {human(free)} / 共 {human(total)}。剩余空间低于多少 GB 时提醒你？[{cur}]：", cur) or cur
+    try:
+        cfg["thresholdGB"] = float(th) if "." in str(th) else int(th)
+    except ValueError:
+        warn(f"「{th}」不是数字，沿用 {cfg['thresholdGB']} GB")
+    ok(f"剩余低于 {cfg['thresholdGB']:g} GB 时提醒")
+
+    say(f"\n{B}2/3 准备 {engines.NAMES[engine]}{X}")
+    copy_runtime()
+    apply_engine(cfg, engine)
+
+    say(f"\n{B}3/3 开启后台监控{X}")
+    save_config(cfg)
+    install_monitor(cfg)
+    ok(f"每 {cfg['intervalMinutes']} 分钟检查一次（只看剩余空间，不调用 AI）")
+    on_path = link_cli()
+    ok("命令行工具：purrge" + ("" if on_path else f"  {D}（~/.local/bin 不在 PATH 里，可用完整路径 {CLI_LINK}）{X}"))
+    if install_skill(engine):
+        ok(f"已教会 {engines.NAMES[engine]}：直接说「帮我清理磁盘」也能用")
+    if has_full_disk_access() is False:
+        say(f"  {D}可选：在「系统设置 → 隐私与安全性 → 完全磁盘访问权限」里给终端打开权限，能扫到更多系统缓存{X}")
+
+    say(f"\n{G}{B}安装完成！{X}常用命令：")
+    say("  purrge scan        立即扫描，完成后自动打开审查页")
+    say("  purrge status      查看剩余空间和监控状态")
+    say("  purrge engine      查看或切换 AI（purrge engine codex / claude）")
+    say("  purrge uninstall   关闭后台监控")
+    if "--yes" not in args and ask("\n现在就扫描一次吗？[y/N]：", "n").lower() in ("y", "yes", "是"):
+        from dg import cmd_run
+        cmd_run(["--background"])
+
+
+def cmd_engine(args):
+    from dg import install_monitor
+    cfg = load_config()
+    if not args:
+        e = cfg.get("aiEngine")
+        say(f"当前 AI：{engines.NAMES.get(e, '未设置（只用规则判断）')}"
+            + (f"，模型 {cfg.get(e + 'Model') or '默认'}，路径 {cfg.get(e + 'Path')}" if e in engines.NAMES else ""))
+        say("切换：purrge engine claude  或  purrge engine codex")
+        return
+    engine = args[0].lower()
+    if engine not in engines.NAMES:
+        fail("只支持 claude 或 codex")
+    apply_engine(cfg, engine)
+    save_config(cfg)
+    install_monitor(cfg)
+    install_skill(engine)
+    ok(f"已切换到 {engines.NAMES[engine]}")

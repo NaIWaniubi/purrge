@@ -1,12 +1,12 @@
 """AI 判断：读 candidates.json，给每项定档（首要清理 / 需你决定 / 不清理）并写一句中文说明 → review.json。
-AI 用 `claude -p` 无工具模式运行；AI 不可用时按知识库规则兜底，工具照样能用。"""
+AI 引擎可以是 Claude Code 或 Codex（见 engines.py），都只读、不能执行删除；AI 不可用时按知识库规则兜底。"""
 import json
 import re
-import subprocess
 import time
 from pathlib import Path
 
-from common import APP_DIR, human, load_config
+import engines
+from common import APP_DIR, human, load_config, save_config
 
 PROMPT_FILE = APP_DIR / "rules" / "ai-rules.md"
 
@@ -38,17 +38,17 @@ def classify(candidates, log=print):
     items = candidates["items"]
     result = {it["id"]: fallback(it) for it in items}
     summary, source = "", "rules"
-    claude = cfg.get("claudePath") or "claude"
-    if items:
+    engine = cfg.get("aiEngine")
+    if items and engine in engines.NAMES:
         prompt = PROMPT_FILE.read_text(encoding="utf-8") + "\n\n## 候选清单\n```json\n" + \
             json.dumps(_brief(items), ensure_ascii=False) + "\n```\n"
-        cmd = [claude, "-p", "--output-format", "json", "--max-turns", "1", "--tools", "", "--no-session-persistence"]
-        if cfg.get("aiModel"):
-            cmd += ["--model", cfg["aiModel"]]
-        log("AI 正在判断每一项能不能清理…")
+        log(f"{engines.NAMES[engine]} 正在判断每一项能不能清理…")
         try:
-            p = subprocess.run(cmd, input=prompt, capture_output=True, text=True, timeout=600)
-            text = json.loads(p.stdout).get("result", "") if p.stdout.strip().startswith("{") else p.stdout
+            text, model = engines.ask(cfg, prompt, log=log)
+            if model != (cfg.get(f"{engine}Model") or ""):      # 换过模型就记住，下次直接用
+                fresh = load_config()
+                fresh[f"{engine}Model"] = model
+                save_config(fresh)
             m = re.search(r"\{.*\}", text, re.S)
             data = json.loads(m.group(0)) if m else {}
             for row in data.get("items", []):
@@ -69,13 +69,14 @@ def classify(candidates, log=print):
             summary = data.get("summary", "")
             source = "ai" if data.get("items") else "rules"
             if source == "rules":
-                log("AI 没有返回可用结果，改用规则判断。" + (p.stderr[-300:] if p.stderr else ""))
-        except (OSError, subprocess.TimeoutExpired, json.JSONDecodeError, StopIteration) as e:
-            log(f"AI 判断不可用（{type(e).__name__}），改用规则判断。")
+                log("AI 没有返回可用结果，改用规则判断。")
+        except (engines.AIError, json.JSONDecodeError, StopIteration) as e:
+            log(f"AI 判断不可用（{str(e)[:200] or type(e).__name__}），改用规则判断。")
     review = dict(candidates)
     review["items"] = [dict(it, **result[it["id"]]) for it in items]
     review["summary"] = summary
     review["judgedBy"] = source
+    review["engine"] = engines.NAMES.get(engine, "") if source == "ai" else ""
     review["generatedAt"] = time.time()
     return review
 

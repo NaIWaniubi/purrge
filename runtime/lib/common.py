@@ -20,8 +20,11 @@ DEFAULT_CONFIG = {
     "cooldownHours": 6,         # 提醒过一次后，多久内不再打扰
     "optionalAction": "trash",  # "需你决定"的项目：trash=移到废纸篓（可找回）delete=直接删除
     "protect": [],              # 额外的保护路径（永不清理）
-    "claudePath": "",           # setup 时自动探测
-    "aiModel": "",              # 留空用默认模型
+    "aiEngine": "",             # claude / codex，安装时选择；留空 = 只用规则判断
+    "claudePath": "",           # 安装时自动探测
+    "codexPath": "",
+    "claudeModel": "",          # 留空用默认模型
+    "codexModel": "",           # 留空用默认模型；不可用时自动换成账号能用的模型
     "language": "zh",
 }
 
@@ -37,6 +40,11 @@ def load_config():
             cfg.update(json.loads(CONFIG.read_text(encoding="utf-8")))
         except (OSError, json.JSONDecodeError):
             pass
+    if not cfg.get("aiEngine") and cfg.get("claudePath"):     # 0.1 版只有 Claude
+        cfg["aiEngine"] = "claude"
+    if cfg.get("aiModel") and not cfg.get("claudeModel"):
+        cfg["claudeModel"] = cfg["aiModel"]
+    cfg.pop("aiModel", None)
     return cfg
 
 

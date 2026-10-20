@@ -1,10 +1,14 @@
-"""purrge 命令行入口。
-  setup [--threshold GB]   一键安装：复制运行时、写配置、注册后台监控
-  run [--no-open]          扫描 → AI 判断 → 打开审查页面（审查完成后才会清理）
-  check                    后台监控调用：低于阈值时弹窗询问
-  config [key value]       查看/修改配置，如：config thresholdGB 20
-  status                   当前磁盘与监控状态
-  uninstall                移除后台监控（--purge 同时删除配置和记录）
+"""Purrge by RabbittuX：macOS 磁盘清理，AI（Claude Code 或 Codex）判断，你确认后才清理。
+
+用法：purrge <命令>
+  install                  安装：选择 AI、检查安装和登录、设阈值、开启后台监控
+                           （可加 --engine claude|codex --threshold 15 --yes）
+  scan                     立即扫描，完成后自动打开审查页面
+  status                   剩余空间、阈值、AI 和后台监控状态
+  engine [claude|codex]    查看或切换 AI
+  config [键 值]           查看或修改设置，如：config thresholdGB 20
+  review                   重新打开最近一次的审查页面
+  uninstall                关闭后台监控（--purge 同时删除设置和扫描记录）
 """
 import json
 import os
@@ -44,28 +48,21 @@ def migrate_from_disk_guard():
     return None
 
 
-def cmd_setup(args):
-    migrated = migrate_from_disk_guard()
-    cfg = load_config()
-    if "--threshold" in args:
-        cfg["thresholdGB"] = float(args[args.index("--threshold") + 1])
-    claude = shutil.which("claude") or str(Path.home() / ".local/bin/claude")
-    cfg["claudePath"] = claude if os.path.exists(claude) else ""
-    # 运行时复制到固定位置（插件目录随版本变化，后台监控要用稳定路径）
-    if APP_DIR.resolve() != INSTALLED_APP.resolve():
-        if INSTALLED_APP.exists():
-            shutil.rmtree(INSTALLED_APP)
-        shutil.copytree(APP_DIR, INSTALLED_APP, ignore=shutil.ignore_patterns("__pycache__"))
-    os.chmod(INSTALLED_APP / "bin/purrge", 0o755)
-    save_config(cfg)
-    install_monitor(cfg)
-    free, total = disk_status()
-    print(json.dumps({
-        "ok": True, "thresholdGB": cfg["thresholdGB"], "intervalMinutes": cfg["intervalMinutes"],
-        "free": human(free), "total": human(total), "claude": cfg["claudePath"] or "未找到（AI 判断将改用规则）",
-        "app": str(INSTALLED_APP), "config": str(CONFIG), "monitor": str(PLIST),
-        "fullDiskAccess": has_full_disk_access(),
-        **({"migratedFrom": migrated + "（旧目录可以手动删除）"} if migrated else {})}, ensure_ascii=False, indent=1))
+def cmd_setup(args):          # 兼容旧命令
+    from installer import cmd_install
+    cmd_install(args if "--engine" in args else args + ["--yes"])
+
+
+def _monitor_path(cfg):
+    """后台任务的 PATH：带上 AI 命令行和 node（npm 装的 codex 需要 node）所在目录。"""
+    dirs = ["/usr/local/bin", "/opt/homebrew/bin", str(Path.home() / ".local/bin")]
+    for key in ("claudePath", "codexPath"):
+        if cfg.get(key):
+            dirs.append(str(Path(cfg[key]).parent))
+    if shutil.which("node"):
+        dirs.append(str(Path(shutil.which("node")).parent))
+    dirs += ["/usr/bin", "/bin", "/usr/sbin", "/sbin"]
+    return ":".join(dict.fromkeys(dirs))
 
 
 def install_monitor(cfg):
@@ -80,7 +77,7 @@ def install_monitor(cfg):
   <key>RunAtLoad</key><true/>
   <key>StandardOutPath</key><string>{DG_HOME}/monitor.log</string>
   <key>StandardErrorPath</key><string>{DG_HOME}/monitor.log</string>
-  <key>EnvironmentVariables</key><dict><key>PATH</key><string>/usr/local/bin:/opt/homebrew/bin:{Path(cfg.get('claudePath') or '/usr/bin').parent}:/usr/bin:/bin:/usr/sbin:/sbin</string></dict>
+  <key>EnvironmentVariables</key><dict><key>PATH</key><string>{_monitor_path(cfg)}</string></dict>
 </dict></plist>
 """, encoding="utf-8")
     uid = os.getuid()
@@ -144,12 +141,12 @@ def cmd_check(args):
 
 
 def cmd_run(args):
-    if "--background" in args:   # 供 Claude Code 命令调用：立即返回，扫描完成后自动打开审查页面
+    if "--background" in args:   # 立即返回，扫描完成后自动打开审查页面
         rest = [a for a in args if a != "--background"]
         log = open(DG_HOME / "run.log", "a")
         subprocess.Popen([sys.executable, str(Path(__file__).resolve()), "run", *rest], start_new_session=True,
                          stdout=log, stderr=subprocess.STDOUT)
-        print("已开始扫描（约 1 分钟：扫描 10 秒 + AI 判断 30～60 秒），完成后会自动在浏览器打开审查页面。"
+        print("已开始扫描（约 1～2 分钟：扫描 10 秒 + AI 判断），完成后会自动在浏览器打开审查页面。"
               f"进度日志：{DG_HOME / 'run.log'}")
         return
     from classify import classify
@@ -163,7 +160,7 @@ def cmd_run(args):
     print(f"扫描完成：{len(cand['items'])} 项，用时 {time.time() - t0:.0f}s")
     review = classify(cand)
     (run_dir / "review.json").write_text(json.dumps(review, ensure_ascii=False, indent=1), encoding="utf-8")
-    print(f"判断完成（{'AI' if review['judgedBy'] == 'ai' else '规则'}），打开审查页面…")
+    print(f"判断完成（{review.get('engine') or '规则'}），打开审查页面…")
     serve(run_dir, open_browser="--no-open" not in args)
 
 
@@ -192,28 +189,42 @@ def cmd_config(args):
     print(json.dumps(cfg, ensure_ascii=False, indent=1))
 
 
+def cmd_scan(args):
+    cmd_run(["--background", *args])
+
+
 def cmd_status(args):
+    import engines
     cfg = load_config()
     free, total = disk_status()
     loaded = subprocess.run(["launchctl", "print", f"gui/{os.getuid()}/{LABEL}"], capture_output=True).returncode == 0
     run = latest_run()
     print(json.dumps({"free": human(free), "total": human(total), "thresholdGB": cfg["thresholdGB"],
                       "belowThreshold": free < cfg["thresholdGB"] * 1024 ** 3, "monitor": "运行中" if loaded else "未安装",
-                      "intervalMinutes": cfg["intervalMinutes"], "lastRun": run.name if run else None},
+                      "intervalMinutes": cfg["intervalMinutes"], "lastRun": run.name if run else None,
+                      "ai": engines.NAMES.get(cfg.get("aiEngine"), "未设置（规则判断）")},
                      ensure_ascii=False, indent=1))
 
 
 def cmd_uninstall(args):
     subprocess.run(["launchctl", "bootout", f"gui/{os.getuid()}/{LABEL}"], capture_output=True)
     PLIST.unlink(missing_ok=True)
+    from installer import CLI_LINK, SKILL_DIRS
+    if CLI_LINK.is_symlink():
+        CLI_LINK.unlink()
+    for d in SKILL_DIRS.values():
+        shutil.rmtree(d, ignore_errors=True)
     if "--purge" in args:
         shutil.rmtree(DG_HOME, ignore_errors=True)
-    print("已移除后台监控" + ("，并删除了配置和记录" if "--purge" in args else "（配置和记录保留在 ~/.purrge）"))
+    print("已关闭后台监控，移除了 purrge 命令和 AI 里的说明文件" +
+          ("，并删除了设置和扫描记录" if "--purge" in args else "（设置和扫描记录保留在 ~/.purrge，加 --purge 可一起删除）"))
 
 
 def main():
-    cmds = {"setup": cmd_setup, "run": cmd_run, "check": cmd_check, "review": cmd_review, "config": cmd_config,
-            "status": cmd_status, "uninstall": cmd_uninstall}
+    from installer import cmd_engine, cmd_install
+    cmds = {"install": cmd_install, "setup": cmd_setup, "scan": cmd_scan, "run": cmd_run, "check": cmd_check,
+            "review": cmd_review, "config": cmd_config, "status": cmd_status, "engine": cmd_engine,
+            "uninstall": cmd_uninstall}
     if len(sys.argv) < 2 or sys.argv[1] not in cmds:
         print(__doc__)
         return

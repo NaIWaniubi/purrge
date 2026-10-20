@@ -387,10 +387,10 @@ api("/api/review").then((d) => {
   R.items.forEach((x) => (byId[x.id] = x));
   R.items.filter((x) => x.tier === "primary").forEach((x) => sel.add(x.id));
   const t = new Date(R.scannedAt * 1000);
-  $("#meta").innerHTML = `扫描于 ${t.toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} · ${R.items.length} 项 <span class="pill ${R.judgedBy === "ai" ? "ai" : "rule"}">${R.judgedBy === "ai" ? "AI 已逐项判断" : "按规则判断"}</span>`;
+  $("#meta").innerHTML = `扫描于 ${t.toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} · ${R.items.length} 项 <span class="pill ${R.judgedBy === "ai" ? "ai" : "rule"}">${R.judgedBy === "ai" ? (R.engine ? R.engine + " 已逐项判断" : "AI 已逐项判断") : "按规则判断"}</span>`;
   if (R.summary) { $("#insight").style.display = ""; $("#insight-t").textContent = R.summary; }
   render();
-}).catch(() => { document.body.innerHTML = '<div class="wrap" style="display:grid;place-items:center;min-height:80vh"><div class="panel" style="padding:44px;text-align:center"><h2 style="margin:0 0 6px">这个审查页面已失效</h2><p style="color:var(--sub);margin:0">请重新运行扫描（/purrge:scan）。</p></div></div>'; });
+}).catch(() => { document.body.innerHTML = '<div class="wrap" style="display:grid;place-items:center;min-height:80vh"><div class="panel" style="padding:44px;text-align:center"><h2 style="margin:0 0 6px">这个审查页面已失效</h2><p style="color:var(--sub);margin:0">请重新运行扫描（终端输入 purrge scan）。</p></div></div>'; });
 </script>
 </body>
 </html>

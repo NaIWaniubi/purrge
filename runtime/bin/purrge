@@ -1,6 +1,11 @@
 #!/bin/bash
-# purrge 入口：找到 python3 并转给 dg.py
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# purrge 入口：找到 python3 并转给 dg.py（支持通过 ~/.local/bin/purrge 这样的链接调用）
+SRC="${BASH_SOURCE[0]}"
+while [ -L "$SRC" ]; do
+  T="$(readlink "$SRC")"
+  case "$T" in /*) SRC="$T" ;; *) SRC="$(dirname "$SRC")/$T" ;; esac
+done
+DIR="$(cd "$(dirname "$SRC")/.." && pwd)"
 PY="$(command -v python3 || echo /usr/bin/python3)"
 if ! "$PY" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 8) else 1)' 2>/dev/null; then
   echo "需要 python3（3.8 以上）。请先运行：xcode-select --install"; exit 1
