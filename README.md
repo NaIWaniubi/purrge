@@ -89,3 +89,13 @@ macOS 磁盘空间不足时自动提醒；扫描**可再生缓存**和**占用�
 ## 卸载
 
 `/purrge:uninstall purge`，再 `/plugin uninstall purrge`。
+
+## 许可证
+
+[PolyForm Noncommercial 1.0.0](LICENSE)：**禁止商用**。
+
+- ✅ 可以：个人使用、学习研究、修改、分享给别人，学校、公益和非盈利组织也可以用
+- ❌ 不可以：用于任何商业目的，包括公司内部用来赚钱的业务、集成进收费产品或服务、改名后售卖
+- 分享或修改时要保留 LICENSE 文件和第一行的版权声明
+
+想商用请先在 [GitHub](https://github.com/RabbittuX) 联系作者获得授权。
