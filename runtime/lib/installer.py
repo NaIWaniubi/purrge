@@ -148,6 +148,13 @@ def copy_runtime():
 
 
 def link_cli():
+    """装一个 purrge 命令；已经通过 Homebrew 等方式装过的，就不再重复放一个。"""
+    for d in os.environ.get("PATH", "").split(":"):
+        other = Path(d) / "purrge"
+        if other != CLI_LINK and other.exists() and os.access(other, os.X_OK):
+            if CLI_LINK.is_symlink():
+                CLI_LINK.unlink()
+            return True
     CLI_LINK.parent.mkdir(parents=True, exist_ok=True)
     if CLI_LINK.is_symlink() or CLI_LINK.exists():
         CLI_LINK.unlink()
