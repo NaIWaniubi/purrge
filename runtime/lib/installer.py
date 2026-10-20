@@ -50,18 +50,44 @@ def _flag(args, name):
     return args[args.index(name) + 1] if name in args and args.index(name) + 1 < len(args) else None
 
 
+def has_tty():
+    try:
+        open("/dev/tty").close()
+        return True
+    except OSError:
+        return False
+
+
+def caller_engine():
+    """被 Claude Code / Codex 代为运行时，它们会在环境变量里留下标记。"""
+    if os.environ.get("CLAUDECODE"):
+        return "claude"
+    if os.environ.get("CODEX_THREAD_ID") or os.environ.get("CODEX_SESSION_ID"):
+        return "codex"
+    return None
+
+
 def choose_engine(args):
     eng = _flag(args, "--engine")
     if eng in engines.NAMES:
         return eng
+    if not has_tty():                    # 没有终端可以提问：由 AI 代装，或被脚本调用
+        eng = caller_engine()
+        if eng:
+            ok(f"检测到由 {engines.NAMES[eng]} 代为安装，就用 {engines.NAMES[eng]} 来做判断")
+            return eng
+        for e in ("claude", "codex"):
+            p = engines.find(e)
+            if p and engines.logged_in(e, p):
+                ok(f"自动选择已登录的 {engines.NAMES[e]}")
+                return e
+        fail("没有可交互的终端，也没找到已登录的 Claude Code / Codex。请加参数：--engine claude 或 --engine codex")
     say(f"\n{B}Purrge 用哪个 AI 来判断哪些东西能清理？{X}")
     for i, e in enumerate(("claude", "codex"), 1):
         p = engines.find(e)
         state = f"{G}已安装 {engines.version_text(p)}{X}" if p else f"{D}未安装，会自动安装最新版{X}"
         say(f"  {i}) {engines.NAMES[e]:<12} {state}")
-    ans = ask("请输入 1 或 2 [1]：", "1")
-    if ans is None:
-        fail("没有可交互的终端。请加参数指定：--engine claude 或 --engine codex")
+    ans = ask("请输入 1 或 2 [1]：", "1") or "1"
     return "codex" if ans.strip() in ("2", "codex", "Codex") else "claude"
 
 
@@ -189,7 +215,7 @@ def cmd_install(args):
     say("  purrge status      查看剩余空间和监控状态")
     say("  purrge engine      查看或切换 AI（purrge engine codex / claude）")
     say("  purrge uninstall   关闭后台监控")
-    if "--yes" not in args and ask("\n现在就扫描一次吗？[y/N]：", "n").lower() in ("y", "yes", "是"):
+    if "--yes" not in args and (ask("\n现在就扫描一次吗？[y/N]：", "n") or "n").lower() in ("y", "yes", "是"):
         from dg import cmd_run
         cmd_run(["--background"])
 

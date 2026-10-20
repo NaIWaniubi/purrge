@@ -71,15 +71,24 @@
 
 ## 🚀 安装
 
-在「终端」中执行以下命令：
+**方式一：Homebrew**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/RabbittuX/purrge/master/install.sh | bash
+brew install rabbittux/tap/purrge
+purrge install
 ```
+
+**方式二：由 AI 代为安装**
+
+在 Claude Code 或 Codex 中输入：
+
+> 帮我安装 GitHub 上的 RabbittuX/purrge
+
+AI 会读取本仓库的[安装指引](#-ai-助手安装指引)完成安装，并自动选用当前的 AI 作为分析引擎。
 
 安装程序将依次完成以下步骤：
 
-1. **选择 AI 引擎**：Claude Code 或 Codex。
+1. **选择 AI 引擎**：Claude Code 或 Codex（由 AI 代为安装时自动选择当前 AI）。
 2. **设置提醒阈值**：剩余空间低于该值时发出提醒，默认 15 GB。
 3. **配置 AI 引擎**：未安装时自动安装最新版本；未登录时打开浏览器完成登录；最后进行连接测试，确认引擎可正常响应。
 4. **启用后台监控**：安装完成后，Purrge 以后台服务形式独立运行，无需保持 Claude Code 或 Codex 处于打开状态。
@@ -88,10 +97,14 @@ curl -fsSL https://raw.githubusercontent.com/RabbittuX/purrge/master/install.sh 
 <summary>其他安装方式</summary>
 
 ```bash
+# 一键脚本
+curl -fsSL https://raw.githubusercontent.com/RabbittuX/purrge/master/install.sh | bash
+
+# 从源码安装
 git clone https://github.com/RabbittuX/purrge.git
 cd purrge && bash install.sh
 
-# 非交互式安装：
+# 非交互式安装
 bash install.sh --engine codex --threshold 20 --yes
 ```
 
@@ -156,6 +169,22 @@ bash install.sh --engine codex --threshold 20 --yes
 | `claudeModel` / `codexModel` | 空 | 指定模型；留空时使用默认模型，Codex 默认模型不可用时自动切换为账号可用的模型 |
 
 </details>
+
+## 🤖 AI 助手安装指引
+
+> 本节供 Claude Code、Codex 等 AI 助手阅读。用户请求安装 Purrge 时，请按以下步骤执行。
+
+1. 确认系统为 macOS（`uname` 输出 `Darwin`），否则告知用户暂不支持。
+2. 执行安装命令（无需 sudo）：
+
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/RabbittuX/purrge/master/install.sh | bash
+   ```
+
+   - 安装程序会识别当前的 AI 助手并将其设为分析引擎，阈值默认 15 GB。
+   - 用户指定了阈值时，改用 `... | bash -s -- --threshold <GB>`；用户指定了引擎时，附加 `--engine claude` 或 `--engine codex`。
+3. 将安装输出中的结果（AI 引擎、提醒阈值、常用命令）转述给用户。
+4. 不要自行删除或移动任何文件。所有清理都必须由用户在 Purrge 的审查页面中勾选确认。
 
 ## 📋 系统要求
 
