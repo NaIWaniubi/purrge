@@ -1,0 +1,8 @@
+#!/bin/bash
+# purrge 入口：找到 python3 并转给 dg.py
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PY="$(command -v python3 || echo /usr/bin/python3)"
+if ! "$PY" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 8) else 1)' 2>/dev/null; then
+  echo "需要 python3（3.8 以上）。请先运行：xcode-select --install"; exit 1
+fi
+exec "$PY" "$DIR/lib/dg.py" "$@"

@@ -1,0 +1,463 @@
+{
+  "version": 1,
+  "note": "已知缓存知识库。tier: primary=首要清理(可再生,默认勾选) optional=需用户决定 keep=不清理。mode: contents=只清空目录里的内容(保留目录本身) whole=整个移除。paths 支持 ~ 和通配符。",
+  "rules": [
+    {
+      "id": "jianying-cache",
+      "name": "剪映缓存",
+      "paths": [
+        "~/Movies/JianyingPro/User Data/Cache",
+        "~/Movies/CapCut/User Data/Cache"
+      ],
+      "mode": "contents",
+      "tier": "primary",
+      "regenerable": true,
+      "apps": [
+        "VideoFusion-macOS",
+        "JianyingPro",
+        "CapCut"
+      ],
+      "impact": "缩略图、音波、素材下载缓存，等同剪映自带的清理缓存；草稿不受影响，打开时会重新生成"
+    },
+    {
+      "id": "chrome-cache",
+      "name": "Chrome 浏览器缓存",
+      "paths": [
+        "~/Library/Caches/Google/Chrome"
+      ],
+      "mode": "contents",
+      "tier": "primary",
+      "regenerable": true,
+      "apps": [
+        "Google Chrome"
+      ],
+      "impact": "网页缓存，删除后自动重建；书签、密码、登录状态不受影响"
+    },
+    {
+      "id": "edge-cache",
+      "name": "Edge 浏览器缓存",
+      "paths": [
+        "~/Library/Caches/Microsoft Edge"
+      ],
+      "mode": "contents",
+      "tier": "primary",
+      "regenerable": true,
+      "apps": [
+        "Microsoft Edge"
+      ],
+      "impact": "网页缓存，删除后自动重建"
+    },
+    {
+      "id": "firefox-cache",
+      "name": "Firefox 浏览器缓存",
+      "paths": [
+        "~/Library/Caches/Firefox"
+      ],
+      "mode": "contents",
+      "tier": "primary",
+      "regenerable": true,
+      "apps": [
+        "firefox"
+      ],
+      "impact": "网页缓存，删除后自动重建"
+    },
+    {
+      "id": "npm-cache",
+      "name": "npm 下载缓存",
+      "paths": [
+        "~/.npm/_cacache"
+      ],
+      "mode": "whole",
+      "tier": "primary",
+      "regenerable": true,
+      "impact": "安装依赖时会重新下载"
+    },
+    {
+      "id": "npx-cache",
+      "name": "npx 临时安装包",
+      "paths": [
+        "~/.npm/_npx"
+      ],
+      "mode": "whole",
+      "tier": "primary",
+      "regenerable": true,
+      "impact": "npx 运行的工具会在下次使用时重新下载；如有脚本直接引用这里的路径会失效"
+    },
+    {
+      "id": "yarn-cache",
+      "name": "Yarn 缓存",
+      "paths": [
+        "~/Library/Caches/Yarn",
+        "~/.cache/yarn"
+      ],
+      "mode": "contents",
+      "tier": "primary",
+      "regenerable": true,
+      "impact": "安装依赖时会重新下载"
+    },
+    {
+      "id": "pnpm-store",
+      "name": "pnpm 包仓库",
+      "paths": [
+        "~/Library/pnpm/store",
+        "~/.pnpm-store",
+        "~/.local/share/pnpm/store"
+      ],
+      "mode": "whole",
+      "tier": "primary",
+      "regenerable": true,
+      "impact": "安装依赖时会重新下载"
+    },
+    {
+      "id": "pip-cache",
+      "name": "pip 缓存",
+      "paths": [
+        "~/Library/Caches/pip",
+        "~/.cache/pip"
+      ],
+      "mode": "whole",
+      "tier": "primary",
+      "regenerable": true,
+      "impact": "安装 Python 包时会重新下载"
+    },
+    {
+      "id": "uv-cache",
+      "name": "uv 缓存",
+      "paths": [
+        "~/.cache/uv",
+        "~/Library/Caches/uv"
+      ],
+      "mode": "whole",
+      "tier": "primary",
+      "regenerable": true,
+      "impact": "安装 Python 包时会重新下载"
+    },
+    {
+      "id": "homebrew-cache",
+      "name": "Homebrew 下载缓存",
+      "paths": [
+        "~/Library/Caches/Homebrew"
+      ],
+      "mode": "contents",
+      "tier": "primary",
+      "regenerable": true,
+      "impact": "旧安装包，已安装的软件不受影响"
+    },
+    {
+      "id": "gradle-cache",
+      "name": "Gradle 缓存",
+      "paths": [
+        "~/.gradle/caches"
+      ],
+      "mode": "whole",
+      "tier": "primary",
+      "regenerable": true,
+      "impact": "下次构建会重新下载依赖，首次构建变慢"
+    },
+    {
+      "id": "maven-repo",
+      "name": "Maven 本地依赖仓库",
+      "paths": [
+        "~/.m2/repository"
+      ],
+      "mode": "whole",
+      "tier": "optional",
+      "regenerable": true,
+      "impact": "Java 项目下次构建会重新下载全部依赖，比较耗时"
+    },
+    {
+      "id": "cargo-cache",
+      "name": "Cargo 下载缓存",
+      "paths": [
+        "~/.cargo/registry/cache",
+        "~/.cargo/git/db"
+      ],
+      "mode": "whole",
+      "tier": "primary",
+      "regenerable": true,
+      "impact": "Rust 构建时会重新下载"
+    },
+    {
+      "id": "go-build-cache",
+      "name": "Go 构建缓存",
+      "paths": [
+        "~/Library/Caches/go-build"
+      ],
+      "mode": "whole",
+      "tier": "primary",
+      "regenerable": true,
+      "impact": "Go 下次编译会变慢一些"
+    },
+    {
+      "id": "xcode-derived",
+      "name": "Xcode 编译缓存 DerivedData",
+      "paths": [
+        "~/Library/Developer/Xcode/DerivedData"
+      ],
+      "mode": "contents",
+      "tier": "primary",
+      "regenerable": true,
+      "apps": [
+        "Xcode"
+      ],
+      "impact": "项目下次编译时重建"
+    },
+    {
+      "id": "xcode-archives",
+      "name": "Xcode 归档包",
+      "paths": [
+        "~/Library/Developer/Xcode/Archives"
+      ],
+      "mode": "contents",
+      "tier": "optional",
+      "regenerable": false,
+      "impact": "已打包的历史版本，删除后无法再重新提交这些版本"
+    },
+    {
+      "id": "ios-device-support",
+      "name": "iOS 设备调试支持文件",
+      "paths": [
+        "~/Library/Developer/Xcode/iOS DeviceSupport"
+      ],
+      "mode": "contents",
+      "tier": "optional",
+      "regenerable": true,
+      "impact": "连接旧设备调试时会重新生成"
+    },
+    {
+      "id": "simulator-caches",
+      "name": "模拟器缓存",
+      "paths": [
+        "~/Library/Developer/CoreSimulator/Caches"
+      ],
+      "mode": "contents",
+      "tier": "primary",
+      "regenerable": true,
+      "impact": "模拟器下次启动时重建"
+    },
+    {
+      "id": "vscode-cache",
+      "name": "VS Code 缓存",
+      "paths": [
+        "~/Library/Application Support/Code/Cache",
+        "~/Library/Application Support/Code/CachedData",
+        "~/Library/Application Support/Code/CachedExtensionVSIXs",
+        "~/Library/Application Support/Code/Service Worker/CacheStorage"
+      ],
+      "mode": "contents",
+      "tier": "primary",
+      "regenerable": true,
+      "apps": [
+        "Code",
+        "Electron"
+      ],
+      "impact": "编辑器缓存，设置和插件不受影响"
+    },
+    {
+      "id": "cursor-cache",
+      "name": "Cursor 缓存",
+      "paths": [
+        "~/Library/Application Support/Cursor/Cache",
+        "~/Library/Application Support/Cursor/CachedData"
+      ],
+      "mode": "contents",
+      "tier": "primary",
+      "regenerable": true,
+      "apps": [
+        "Cursor"
+      ],
+      "impact": "编辑器缓存，设置和插件不受影响"
+    },
+    {
+      "id": "jetbrains-cache",
+      "name": "JetBrains IDE 缓存",
+      "paths": [
+        "~/Library/Caches/JetBrains"
+      ],
+      "mode": "contents",
+      "tier": "primary",
+      "regenerable": true,
+      "apps": [
+        "idea",
+        "pycharm",
+        "webstorm",
+        "goland"
+      ],
+      "impact": "索引缓存，下次打开项目会重新建立索引"
+    },
+    {
+      "id": "codex-cache",
+      "name": "Codex 应用缓存",
+      "paths": [
+        "~/Library/Caches/com.openai.codex",
+        "~/Library/Caches/Codex"
+      ],
+      "mode": "contents",
+      "tier": "primary",
+      "regenerable": true,
+      "apps": [
+        "Codex"
+      ],
+      "impact": "应用缓存；其中正在等待安装的更新包受系统保护，可能删不掉"
+    },
+    {
+      "id": "codex-runtime-temp",
+      "name": "Codex 运行时安装残留",
+      "paths": [
+        "~/.cache/codex-runtimes/codex-runtime-install-*"
+      ],
+      "mode": "whole",
+      "tier": "primary",
+      "regenerable": true,
+      "impact": "中断的安装临时目录；正在使用的 codex-primary-runtime 不在此列"
+    },
+    {
+      "id": "hyperframes-cache",
+      "name": "HyperFrames 浏览器与模型缓存",
+      "paths": [
+        "~/.cache/hyperframes/chrome",
+        "~/.cache/hyperframes/optional",
+        "~/.cache/hyperframes/background-removal"
+      ],
+      "mode": "whole",
+      "tier": "primary",
+      "regenerable": true,
+      "impact": "需要时会重新下载"
+    },
+    {
+      "id": "playwright-browsers",
+      "name": "Playwright 浏览器",
+      "paths": [
+        "~/Library/Caches/ms-playwright"
+      ],
+      "mode": "whole",
+      "tier": "optional",
+      "regenerable": true,
+      "impact": "自动化测试需要时要重新下载浏览器（较大）"
+    },
+    {
+      "id": "puppeteer-browsers",
+      "name": "Puppeteer 浏览器",
+      "paths": [
+        "~/.cache/puppeteer"
+      ],
+      "mode": "whole",
+      "tier": "optional",
+      "regenerable": true,
+      "impact": "需要时要重新下载浏览器"
+    },
+    {
+      "id": "user-logs",
+      "name": "应用日志",
+      "paths": [
+        "~/Library/Logs"
+      ],
+      "mode": "contents",
+      "tier": "primary",
+      "regenerable": true,
+      "minMB": 200,
+      "impact": "历史日志，排查旧问题时会用不上"
+    },
+    {
+      "id": "tool-trash",
+      "name": "命令行工具回收站",
+      "paths": [
+        "~/.local/share/Trash"
+      ],
+      "mode": "contents",
+      "tier": "primary",
+      "regenerable": true,
+      "impact": "命令行工具删除的旧文件"
+    },
+    {
+      "id": "user-trash",
+      "name": "访达废纸篓",
+      "paths": [
+        "~/.Trash"
+      ],
+      "mode": "contents",
+      "tier": "optional",
+      "regenerable": false,
+      "impact": "清空废纸篓，里面的文件将无法找回"
+    },
+    {
+      "id": "docker-data",
+      "name": "Docker 数据（镜像/容器）",
+      "paths": [
+        "~/Library/Containers/com.docker.docker"
+      ],
+      "mode": "whole",
+      "tier": "keep",
+      "regenerable": false,
+      "apps": [
+        "Docker"
+      ],
+      "impact": "请用 docker system prune 清理，不要直接删文件"
+    },
+    {
+      "id": "workbuddy-migration",
+      "name": "WorkBuddy 升级迁移缓存",
+      "paths": [
+        "~/Library/Caches/com.tencent.workbuddy.mac.BundleMigration"
+      ],
+      "mode": "contents",
+      "tier": "optional",
+      "regenerable": false,
+      "apps": [
+        "WorkBuddy"
+      ],
+      "impact": "旧安装包与旧版本备份，删除后无法回滚到旧版本"
+    }
+  ],
+  "genericCacheRoots": [
+    {
+      "root": "~/Library/Caches",
+      "minMB": 150,
+      "tier": "optional",
+      "impact": "应用缓存，删除后第一次打开该应用会稍慢；一般不影响账号和文件"
+    }
+  ],
+  "largeScan": {
+    "fileMinMB": 500,
+    "dirMinMB": 1024,
+    "dirRoots": [
+      "~/Downloads",
+      "~/Desktop",
+      "~/Documents",
+      "~/Movies",
+      "~/Music",
+      "~/Pictures"
+    ],
+    "dirDepth": 2,
+    "excludeUnder": [
+      "~/Library",
+      "~/.Trash",
+      "~/Pictures/Photos Library.photoslibrary"
+    ]
+  },
+  "protected": [
+    "~/.claude",
+    "~/.codex",
+    "~/.ssh",
+    "~/.gnupg",
+    "~/.config",
+    "~/.cache/whisper",
+    "~/.u2net",
+    "~/.ollama",
+    "~/.cache/torch",
+    "~/.cache/huggingface",
+    "~/.cache/big-lama.pt",
+    "~/.cache/hyperframes/history",
+    "~/.cache/codex-runtimes/codex-primary-runtime",
+    "~/Library/Mobile Documents",
+    "~/Library/Mail",
+    "~/Library/Messages",
+    "~/Library/Photos",
+    "~/Library/Keychains",
+    "~/Library/Application Support/AddressBook",
+    "~/Pictures/Photos Library.photoslibrary",
+    "~/.purrge",
+    "~/Movies/JianyingPro/User Data/Projects",
+    "~/Movies/CapCut/User Data/Projects"
+  ]
+}

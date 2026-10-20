@@ -1,0 +1,15 @@
+{
+  "name": "rabbittux",
+  "owner": {
+    "name": "RabbittuX"
+  },
+  "description": "Purrge：AI 审查的 macOS 磁盘清理工具",
+  "plugins": [
+    {
+      "name": "purrge",
+      "source": ".",
+      "description": "磁盘空间不足提醒 + AI 判断可清理内容 + 审查后清理",
+      "version": "0.1.0"
+    }
+  ]
+}
