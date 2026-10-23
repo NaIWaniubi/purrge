@@ -137,6 +137,16 @@ irm https://raw.githubusercontent.com/RabbittuX/purrge/master/install.ps1 | iex
 
 切换：`purrge engine claude | codex | workbuddy | deepseek`。
 
+### 更新
+
+```bash
+purrge update
+```
+
+自动识别安装方式（Homebrew / 脚本），先备份再更新，设置、扫描记录和 AI 引擎都保留；新版本自检不通过会自动换回旧版本。有新版本时，`purrge status` 和审查页会提示。
+
+> 从 0.2.x 升级：旧版本还没有 `purrge update`，需要手动更新一次——Homebrew 用户运行 `brew upgrade rabbittux/tap/purrge && purrge install`，脚本安装的用户重新运行一遍安装命令。之后就可以用 `purrge update` 了。
+
 ## 🐾 使用方法
 
 | 操作 | 终端命令 | 在 Claude Code / Codex 中的自然语言指令 |
@@ -145,6 +155,7 @@ irm https://raw.githubusercontent.com/RabbittuX/purrge/master/install.ps1 | iex
 | 查看状态 | `purrge status` | "硬盘还剩多少" |
 | 修改阈值 | `purrge config thresholdGB 20` | "阈值改成 20G" |
 | 切换 AI 引擎 | `purrge engine codex` 或 `purrge engine claude` | — |
+| 更新到最新版 | `purrge update` | "帮我更新 Purrge" |
 | 停用提醒 | `purrge uninstall` | "关掉磁盘提醒" |
 
 阈值、检查频率等参数也可在审查页面右上角的「设置」中修改。
