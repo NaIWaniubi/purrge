@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "note": "Windows 版缓存知识库。路径支持 ~ 和 %LOCALAPPDATA% / %APPDATA% / %TEMP% 等环境变量；格式与 registry.json（macOS）完全一致。",
+  "rules": [
+    {"id": "jianying-cache", "name": "剪映缓存", "paths": ["%LOCALAPPDATA%/JianyingPro/User Data/Cache", "%LOCALAPPDATA%/CapCut/User Data/Cache"], "mode": "contents", "tier": "primary", "regenerable": true, "apps": ["JianyingPro.exe", "CapCut.exe"], "impact": "缩略图、音波、素材下载缓存，等同剪映自带的清理缓存；草稿不受影响，打开时会重新生成"},
+    {"id": "chrome-cache", "name": "Chrome 浏览器缓存", "paths": ["%LOCALAPPDATA%/Google/Chrome/User Data/*/Cache", "%LOCALAPPDATA%/Google/Chrome/User Data/*/Code Cache"], "mode": "contents", "tier": "primary", "regenerable": true, "apps": ["chrome.exe"], "impact": "网页缓存，删除后自动重建；书签、密码、登录状态不受影响"},
+    {"id": "edge-cache", "name": "Edge 浏览器缓存", "paths": ["%LOCALAPPDATA%/Microsoft/Edge/User Data/*/Cache", "%LOCALAPPDATA%/Microsoft/Edge/User Data/*/Code Cache"], "mode": "contents", "tier": "primary", "regenerable": true, "apps": ["msedge.exe"], "impact": "网页缓存，删除后自动重建；书签、密码、登录状态不受影响"},
+    {"id": "firefox-cache", "name": "Firefox 浏览器缓存", "paths": ["%LOCALAPPDATA%/Mozilla/Firefox/Profiles/*/cache2"], "mode": "contents", "tier": "primary", "regenerable": true, "apps": ["firefox.exe"], "impact": "网页缓存，删除后自动重建"},
+    {"id": "npm-cache", "name": "npm 下载缓存", "paths": ["%LOCALAPPDATA%/npm-cache/_cacache"], "mode": "whole", "tier": "primary", "regenerable": true, "impact": "包下载缓存，下次安装会重新下载"},
+    {"id": "npx-cache", "name": "npx 临时包", "paths": ["%LOCALAPPDATA%/npm-cache/_npx"], "mode": "whole", "tier": "primary", "regenerable": true, "impact": "npx 临时下载的工具，下次运行会重新下载"},
+    {"id": "yarn-cache", "name": "Yarn 缓存", "paths": ["%LOCALAPPDATA%/Yarn/Cache"], "mode": "whole", "tier": "primary", "regenerable": true, "impact": "包下载缓存，下次安装会重新下载"},
+    {"id": "pnpm-store", "name": "pnpm 存储", "paths": ["%LOCALAPPDATA%/pnpm/store"], "mode": "whole", "tier": "optional", "regenerable": true, "impact": "所有项目共享的依赖仓库，删除后各项目需要重新安装依赖"},
+    {"id": "pip-cache", "name": "pip 缓存", "paths": ["%LOCALAPPDATA%/pip/Cache"], "mode": "whole", "tier": "primary", "regenerable": true, "impact": "Python 包下载缓存，下次安装会重新下载"},
+    {"id": "uv-cache", "name": "uv 缓存", "paths": ["%LOCALAPPDATA%/uv/cache"], "mode": "whole", "tier": "primary", "regenerable": true, "impact": "Python 包缓存，下次安装会重新下载"},
+    {"id": "gradle-cache", "name": "Gradle 缓存", "paths": ["~/.gradle/caches"], "mode": "whole", "tier": "primary", "regenerable": true, "impact": "依赖与构建缓存，下次构建会重新下载，首次构建较慢"},
+    {"id": "maven-repo", "name": "Maven 本地仓库", "paths": ["~/.m2/repository"], "mode": "whole", "tier": "optional", "regenerable": true, "impact": "依赖可重新下载，但下次构建会慢很多"},
+    {"id": "cargo-cache", "name": "Cargo 下载缓存", "paths": ["~/.cargo/registry/cache"], "mode": "whole", "tier": "primary", "regenerable": true, "impact": "Rust 包下载缓存，下次构建会重新下载"},
+    {"id": "go-build-cache", "name": "Go 编译缓存", "paths": ["%LOCALAPPDATA%/go-build"], "mode": "whole", "tier": "primary", "regenerable": true, "impact": "编译缓存，下次编译会重建"},
+    {"id": "vscode-cache", "name": "VS Code 缓存", "paths": ["%APPDATA%/Code/Cache", "%APPDATA%/Code/CachedData", "%APPDATA%/Code/CachedExtensionVSIXs"], "mode": "contents", "tier": "primary", "regenerable": true, "apps": ["Code.exe"], "impact": "编辑器缓存，设置和插件不受影响"},
+    {"id": "cursor-cache", "name": "Cursor 缓存", "paths": ["%APPDATA%/Cursor/Cache", "%APPDATA%/Cursor/CachedData"], "mode": "contents", "tier": "primary", "regenerable": true, "apps": ["Cursor.exe"], "impact": "编辑器缓存，设置和插件不受影响"},
+    {"id": "jetbrains-cache", "name": "JetBrains IDE 缓存", "paths": ["%LOCALAPPDATA%/JetBrains/*/caches"], "mode": "whole", "tier": "primary", "regenerable": true, "impact": "IDE 索引缓存，下次打开项目会重新建立索引"},
+    {"id": "playwright-browsers", "name": "Playwright 浏览器", "paths": ["%LOCALAPPDATA%/ms-playwright"], "mode": "whole", "tier": "optional", "regenerable": true, "impact": "自动化测试用的浏览器，需要时会重新下载（较大）"},
+    {"id": "puppeteer-browsers", "name": "Puppeteer 浏览器", "paths": ["~/.cache/puppeteer"], "mode": "whole", "tier": "optional", "regenerable": true, "impact": "自动化用的浏览器，需要时会重新下载"},
+    {"id": "user-temp", "name": "用户临时文件", "paths": ["%TEMP%"], "mode": "contents", "tier": "primary", "regenerable": true, "impact": "程序运行时留下的临时文件；正在使用的会自动跳过"},
+    {"id": "crash-dumps", "name": "程序崩溃转储", "paths": ["%LOCALAPPDATA%/CrashDumps"], "mode": "contents", "tier": "primary", "regenerable": true, "impact": "程序崩溃时留下的诊断文件，删除不影响使用"},
+    {"id": "docker-data", "name": "Docker 数据", "paths": ["%LOCALAPPDATA%/Docker/wsl"], "mode": "whole", "tier": "keep", "regenerable": false, "impact": "容器和镜像数据，请在 Docker 里自行清理"}
+  ],
+  "genericCacheRoots": [
+    {"root": "%LOCALAPPDATA%/Temp", "minMB": 150, "tier": "optional", "impact": "应用临时文件，一般可以删除；正在使用的会自动跳过"}
+  ],
+  "largeScan": {
+    "fileMinMB": 500,
+    "dirMinMB": 1024,
+    "dirRoots": ["~/Downloads", "~/Desktop", "~/Documents", "~/Videos", "~/Music", "~/Pictures"],
+    "dirDepth": 2,
+    "excludeUnder": ["~/AppData", "~/OneDrive"]
+  },
+  "protected": [
+    "~/.claude", "~/.codex", "~/.ssh", "~/.gnupg", "~/.config", "~/.purrge", "~/.codebuddy", "~/.workbuddy",
+    "~/.cache/whisper", "~/.cache/huggingface", "~/.cache/torch", "~/.ollama",
+    "~/OneDrive", "%APPDATA%/Microsoft", "%LOCALAPPDATA%/Microsoft",
+    "%LOCALAPPDATA%/JianyingPro/User Data/Projects", "%LOCALAPPDATA%/CapCut/User Data/Projects",
+    "%LOCALAPPDATA%/Google/Chrome/User Data/Default/Login Data", "%SystemRoot%", "%ProgramFiles%", "%ProgramFiles(x86)%", "%ProgramData%"
+  ]
+}

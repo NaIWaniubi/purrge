@@ -6,6 +6,7 @@ import platform
 import re
 import shutil
 import subprocess
+import sys
 import tarfile
 import tempfile
 import urllib.request
@@ -48,6 +49,10 @@ def _candidates(engine):
             prefix = _run([npm, "prefix", "-g"], timeout=20).stdout.strip()
             if prefix:
                 paths.append(Path(prefix) / "bin" / b)
+    elif sys.platform == "win32":    # Windows：官方安装器放在 ~/.local/bin，npm 全局命令在 %APPDATA%\\npm
+        exe = BIN[engine]
+        appdata = Path(os.environ.get("APPDATA", HOME / "AppData/Roaming"))
+        paths += [HOME / ".local/bin" / f"{exe}.exe", appdata / "npm" / f"{exe}.cmd"]
     elif engine == "claude":
         paths += [HOME / ".local/bin/claude", HOME / ".claude/local/claude", "/opt/homebrew/bin/claude", "/usr/local/bin/claude"]
     else:   # ChatGPT / Codex 桌面版自带的 codex 往往比命令行装的新
@@ -58,7 +63,7 @@ def _candidates(engine):
     seen, out = set(), []
     for p in paths:
         p = str(p)
-        if p not in seen and os.path.isfile(p) and os.access(p, os.X_OK):
+        if p not in seen and os.path.isfile(p) and (sys.platform == "win32" or os.access(p, os.X_OK)):
             seen.add(p)
             out.append(p)
     return out
@@ -88,7 +93,10 @@ def install(engine, say=print):
         return find(engine)
     if engine == "claude":
         say("正在安装最新版 Claude Code（官方安装脚本）…")
-        p = subprocess.run("curl -fsSL https://claude.ai/install.sh | bash", shell=True)
+        if sys.platform == "win32":
+            p = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "irm https://claude.ai/install.ps1 | iex"])
+        else:
+            p = subprocess.run("curl -fsSL https://claude.ai/install.sh | bash", shell=True)
         if p.returncode != 0 and shutil.which("npm"):
             say("官方脚本失败，改用 npm 安装…")
             subprocess.run(["npm", "install", "-g", "@anthropic-ai/claude-code@latest"])
@@ -98,8 +106,10 @@ def install(engine, say=print):
         subprocess.run(["npm", "install", "-g", "@openai/codex@latest"])
     elif shutil.which("brew"):
         subprocess.run(["brew", "install", "codex"])
-    else:
+    elif sys.platform != "win32":
         _install_codex_release(say)
+    else:
+        say("Codex 需要先安装 Node.js（自带 npm）：https://nodejs.org ，装好后重新运行安装命令")
     return find("codex")
 
 

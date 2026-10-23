@@ -12,7 +12,8 @@ OFFICIAL = "GitHub RabbittuX/purrge"     # 唯一官方来源
 HOME = Path.home()
 DG_HOME = Path(os.environ.get("PURRGE_HOME", HOME / ".purrge"))
 APP_DIR = Path(__file__).resolve().parent.parent          # runtime/
-RULES = APP_DIR / "rules" / "registry.json"
+import sys  # noqa: E402
+RULES = APP_DIR / "rules" / ("registry.win.json" if sys.platform == "win32" else "registry.json")
 WEB_DIR = APP_DIR / "web"
 CONFIG = DG_HOME / "config.json"
 RUNS = DG_HOME / "runs"

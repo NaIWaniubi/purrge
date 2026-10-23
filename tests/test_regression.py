@@ -12,6 +12,7 @@ import time
 import unittest
 from pathlib import Path
 
+WIN = sys.platform == "win32"
 ROOT = Path(__file__).resolve().parent.parent
 LIB = ROOT / "runtime" / "lib"
 FAKE = {
@@ -92,16 +93,20 @@ class Env:
         self.log = Path(self.tmp.name) / "calls.jsonl"
         self.log.write_text("")
         for name, src in FAKE.items():
+            if WIN:   # Windows 不认 shebang：用 name.cmd 调 python 跑 name.py
+                (self.bin / f"{name}.py").write_text(src, encoding="utf-8")
+                (self.bin / f"{name}.cmd").write_text(f'@"{sys.executable}" "%~dp0{name}.py" %*\r\n', encoding="utf-8")
+                continue
             p = self.bin / name
             p.write_text(src)
             p.chmod(p.stat().st_mode | stat.S_IEXEC)
         self.extra = {}
 
     def run(self, code, check=True):
-        env = dict(os.environ, HOME=str(self.home), PURRGE_HOME=str(self.home / ".purrge"), FAKE_LOG=str(self.log),
+        env = dict(os.environ, HOME=str(self.home), USERPROFILE=str(self.home), PURRGE_HOME=str(self.home / ".purrge"), FAKE_LOG=str(self.log),
                    PATH=f"{self.bin}{os.pathsep}{os.environ.get('PATH', '')}", PYTHONDONTWRITEBYTECODE="1", **self.extra)
         prog = "import sys, json\nsys.path.insert(0, %r)\n" % str(LIB) + textwrap.dedent(code)
-        p = subprocess.run([sys.executable, "-c", prog], capture_output=True, text=True, env=env, timeout=120)
+        p = subprocess.run([sys.executable, "-c", prog], capture_output=True, text=True, env=env, timeout=120, encoding="utf-8")
         if check and p.returncode:
             raise AssertionError(p.stderr[-2000:])
         last = [l for l in p.stdout.splitlines() if l.startswith("@@")]
@@ -164,7 +169,7 @@ class TestCleanSafety(Base):
         ''')
         self.assertEqual(r["st"], {"c1": "deleted", "c2": "trashed", "c3": "skipped", "c4": "skipped", "c5": "skipped", "ghost": "skipped"})
         self.assertTrue(r["cache_dir"] and r["cache_empty"], "contents 模式保留目录本身、清空内容")
-        self.assertTrue(r["big_gone"] and r["big_in_trash"], "需要你决定的项目默认移到废纸篓")
+        self.assertTrue(r["big_gone"] and (WIN or r["big_in_trash"]), "需要你决定的项目默认移到废纸篓 / 回收站")
         self.assertTrue(r["keep"] and r["claude"] and r["changed"] and r["notselected"])
         self.assertEqual(r["keys"], ["finishedAt", "freeAfter", "freeBefore", "freedBytes", "results"])
 
@@ -293,7 +298,8 @@ class TestNewEngines(Base):
         ''')
         self.assertFalse(r["no_key"][0])
         self.assertEqual(r["ok"], [True, "", ""])
-        self.assertEqual(r["mode"], "0o600")
+        if not WIN:
+            self.assertEqual(r["mode"], "0o600")
         run = [c for c in self.e.calls() if c["bin"] == "dsh" and "-" in c["args"]][0]
         self.assertIn("--patch", run["args"]); self.assertEqual(run["key"], "sk-test")
 
@@ -339,11 +345,32 @@ class TestConfig(Base):
         self.assertEqual((r["aiEngine"], r["claudeModel"], r["thresholdGB"], "aiModel" in r), ("claude", "m1", 20, False))
 
 
+class TestPlatform(Base):
+    """两个系统实现的接口必须一致（防止只改了一边）。"""
+    def test_same_interface(self):
+        import ast
+        names = {}
+        for f in ("mac.py", "win.py"):
+            tree = ast.parse((LIB / "plat" / f).read_text(encoding="utf-8"))
+            names[f] = {n.name for n in tree.body if isinstance(n, ast.FunctionDef) and not n.name.startswith("_")} | \
+                       {t.id for n in tree.body if isinstance(n, ast.Assign) for t in n.targets if isinstance(t, ast.Name) and t.id.isupper() and not t.id.startswith("_")}
+        self.assertEqual(names["mac.py"], names["win.py"])
+
+    def test_rules_valid(self):
+        for f in ("registry.json", "registry.win.json"):
+            r = json.loads((ROOT / "runtime/rules" / f).read_text(encoding="utf-8"))
+            self.assertTrue({"rules", "genericCacheRoots", "largeScan", "protected"} <= set(r), f)
+            for rule in r["rules"]:
+                self.assertTrue({"id", "name", "paths", "mode", "tier"} <= set(rule), (f, rule.get("id")))
+                self.assertIn(rule["tier"], ("primary", "optional", "keep"))
+            self.assertIn("~/.purrge", r["protected"], f)
+
+
 class TestCLI(Base):
     def cli(self, *args):
-        env = dict(os.environ, HOME=str(self.e.home), PURRGE_HOME=str(self.e.home / ".purrge"), FAKE_LOG=str(self.e.log),
+        env = dict(os.environ, HOME=str(self.e.home), USERPROFILE=str(self.e.home), PURRGE_HOME=str(self.e.home / ".purrge"), FAKE_LOG=str(self.e.log),
                    PATH=f"{self.e.bin}{os.pathsep}{os.environ.get('PATH', '')}")
-        return subprocess.run([sys.executable, str(LIB / "dg.py"), *args], capture_output=True, text=True, env=env, timeout=60)
+        return subprocess.run([sys.executable, str(LIB / "dg.py"), *args], capture_output=True, text=True, env=env, timeout=60, encoding="utf-8")
 
     def test_version_help(self):
         self.assertIn("by RabbittuX", self.cli("version").stdout)

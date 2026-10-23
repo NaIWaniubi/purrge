@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 import engines
+WIN = sys.platform == "win32"
 from common import APP_DIR, CONFIG, DG_HOME, OFFICIAL, VERSION, disk_status, human, load_config, save_config
 
 INSTALLED_APP = DG_HOME / "app"
@@ -37,6 +38,12 @@ def fail(msg):
 
 def ask(prompt, default=""):
     """从终端读一行；没有终端（比如被别的程序调用）时返回 None。"""
+    if WIN:
+        try:
+            ans = input(prompt) if sys.stdin and sys.stdin.isatty() else None
+        except (EOFError, OSError):
+            return None
+        return None if ans is None else (ans.strip() or default)
     try:
         with open("/dev/tty") as tin, open("/dev/tty", "w") as tout:
             tout.write(prompt)
@@ -53,6 +60,8 @@ def _flag(args, name):
 
 
 def has_tty():
+    if WIN:
+        return bool(sys.stdin and sys.stdin.isatty())
     try:
         open("/dev/tty").close()
         return True
@@ -151,8 +160,18 @@ def copy_runtime():
     os.chmod(INSTALLED_APP / "bin/purrge", 0o755)
 
 
+def _link_cli_win():
+    """Windows：在 WindowsApps（默认就在 PATH 里）放一个 purrge.cmd。"""
+    target = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData/Local")) / "Microsoft/WindowsApps/purrge.cmd"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(f'@"{sys.executable}" "{INSTALLED_APP / "lib/dg.py"}" %*\r\n', encoding="utf-8")
+    return str(target.parent).lower() in os.environ.get("PATH", "").lower()
+
+
 def link_cli():
     """装一个 purrge 命令；已经通过 Homebrew 等方式装过的，就不再重复放一个。"""
+    if WIN:
+        return _link_cli_win()
     for d in os.environ.get("PATH", "").split(":"):
         other = Path(d) / "purrge"
         if other != CLI_LINK and other.exists() and os.access(other, os.X_OK):

@@ -64,7 +64,7 @@ def _monitor_path(cfg):
     if shutil.which("node"):
         dirs.append(str(Path(shutil.which("node")).parent))
     dirs += ["/usr/bin", "/bin", "/usr/sbin", "/sbin"]
-    return ":".join(dict.fromkeys(dirs))
+    return os.pathsep.join(dict.fromkeys(dirs))
 
 
 def install_monitor(cfg):
@@ -189,6 +189,9 @@ def cmd_uninstall(args):
 
 
 def main():
+    if sys.stdout is None:   # Windows 后台用 pythonw 运行时没有控制台：输出写进日志
+        DG_HOME.mkdir(parents=True, exist_ok=True)
+        sys.stdout = sys.stderr = open(DG_HOME / "monitor.log", "a", encoding="utf-8")
     from installer import cmd_engine, cmd_install
     cmds = {"install": cmd_install, "setup": cmd_setup, "scan": cmd_scan, "run": cmd_run, "check": cmd_check,
             "review": cmd_review, "config": cmd_config, "status": cmd_status, "engine": cmd_engine,

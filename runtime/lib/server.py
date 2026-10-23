@@ -13,6 +13,15 @@ from clean import clean
 from common import WEB_DIR, disk_status, load_config, save_config
 
 IDLE_LIMIT = 30 * 60
+WORDS = {"访达": plat.FILE_MANAGER, "废纸篓": "回收站" if plat.NAME == "Windows" else "废纸篓"}
+
+
+def localize(text):
+    """macOS 原样返回；Windows 把「访达 / 废纸篓」换成「资源管理器 / 回收站」。"""
+    for a, b in WORDS.items():
+        if a != b:
+            text = text.replace(a, b)
+    return text
 
 
 def serve(run_dir, open_browser=True, log=print):
@@ -20,7 +29,7 @@ def serve(run_dir, open_browser=True, log=print):
     review = json.loads((run_dir / "review.json").read_text(encoding="utf-8"))
     token = secrets.token_urlsafe(16)
     state = {"last": time.time(), "done": False}
-    page = (WEB_DIR / "review.html").read_text(encoding="utf-8")
+    page = localize((WEB_DIR / "review.html").read_text(encoding="utf-8"))
 
     class H(BaseHTTPRequestHandler):
         def log_message(self, *a):
@@ -57,6 +66,8 @@ def serve(run_dir, open_browser=True, log=print):
             if self.path == "/api/clean":
                 ids = [str(i) for i in body.get("ids", [])]
                 out = clean(review, ids, log=log)
+                for r in out["results"]:
+                    r["message"] = localize(r.get("message", ""))
                 (run_dir / "result.json").write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
                 state["done"] = True
                 return self._send(200, out)
