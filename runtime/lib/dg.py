@@ -189,6 +189,10 @@ def cmd_uninstall(args):
 
 
 def main():
+    if sys.platform == "win32":   # Windows 控制台输出被程序（如 AI 代装）捕获时默认不是 UTF-8，中文会报错
+        for s in (sys.stdout, sys.stderr):
+            if s is not None and hasattr(s, "reconfigure"):
+                s.reconfigure(encoding="utf-8", errors="replace")
     if sys.stdout is None:   # Windows 后台用 pythonw 运行时没有控制台：输出写进日志
         DG_HOME.mkdir(parents=True, exist_ok=True)
         sys.stdout = sys.stderr = open(DG_HOME / "monitor.log", "a", encoding="utf-8")

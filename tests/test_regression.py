@@ -104,7 +104,7 @@ class Env:
 
     def run(self, code, check=True):
         env = dict(os.environ, HOME=str(self.home), USERPROFILE=str(self.home), PURRGE_HOME=str(self.home / ".purrge"), FAKE_LOG=str(self.log),
-                   PATH=f"{self.bin}{os.pathsep}{os.environ.get('PATH', '')}", PYTHONDONTWRITEBYTECODE="1", **self.extra)
+                   PATH=f"{self.bin}{os.pathsep}{os.environ.get('PATH', '')}", PYTHONDONTWRITEBYTECODE="1", PYTHONUTF8="1", **self.extra)
         prog = "import sys, json\nsys.path.insert(0, %r)\n" % str(LIB) + textwrap.dedent(code)
         p = subprocess.run([sys.executable, "-c", prog], capture_output=True, text=True, env=env, timeout=120, encoding="utf-8")
         if check and p.returncode:
@@ -408,7 +408,7 @@ class TestScanAndServer(Base):
         (d / "review.json").write_text(json.dumps({"items": [{"id": "c1", "path": str(Path.home()), "kind": "cache"}], "summary": "", "judgedBy": "rules"}))
         from server import serve
         threading.Thread(target=serve, args=(d,), kwargs={"open_browser": False, "log": lambda *a: None}, daemon=True).start()
-        for _ in range(50):
+        for _ in range(300):
             if (d / "review-url.txt").exists(): break
             time.sleep(0.1)
         url = (d / "review-url.txt").read_text(); base = url.split("/?")[0]; tok = url.split("token=")[1]

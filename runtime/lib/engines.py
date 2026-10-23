@@ -25,6 +25,9 @@ MODEL_ERRORS = ("not supported", "requires a newer version", "model_not_found", 
 def _run(cmd, **kw):
     """后台调用：脱离终端运行，避免 CLI 向终端发查询码、抢用户正在输入的内容。"""
     kw.setdefault("start_new_session", True)
+    if sys.platform == "win32":   # AI 命令行输出的是 UTF-8，Windows 默认按系统代码页解码会乱码
+        kw.setdefault("encoding", "utf-8")
+        kw.setdefault("errors", "replace")
     kw.setdefault("stdin", subprocess.DEVNULL) if "input" not in kw else None
     try:
         return subprocess.run(cmd, capture_output=True, text=True, **kw)
