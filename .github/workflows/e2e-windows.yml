@@ -25,7 +25,7 @@ jobs:
           $s = irm "https://raw.githubusercontent.com/RabbittuX/purrge/${{ github.sha }}/install.ps1"
           & ([scriptblock]::Create($s)) --engine workbuddy --threshold 15 --yes
       - name: 检查安装结果
-        shell: powershell
+        shell: pwsh
         run: |
           $p = "$env:LOCALAPPDATA\Microsoft\WindowsApps\purrge.cmd"
           if (-not (Test-Path $p)) { throw "没有 purrge 命令" }
@@ -39,7 +39,7 @@ jobs:
           & $cb.FullName --version
           Get-Content "$env:USERPROFILE\.purrge\config.json"
       - name: 扫描 + 审查页面 + 清理进回收站
-        shell: powershell
+        shell: pwsh
         run: |
           $p = "$env:LOCALAPPDATA\Microsoft\WindowsApps\purrge.cmd"
           $junk = "$env:TEMP\purrge-e2e-junk"; New-Item -ItemType Directory -Force $junk | Out-Null
