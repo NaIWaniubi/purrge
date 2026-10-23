@@ -54,7 +54,14 @@ def serve(run_dir, open_browser=True, log=print):
                 return self._send(403, {"error": "forbidden"})
             if self.path.startswith("/api/review"):
                 free, total = disk_status()
-                return self._send(200, {"review": review, "config": load_config(), "freeBytes": free, "totalBytes": total})
+                data = {"review": review, "config": load_config(), "freeBytes": free, "totalBytes": total}
+                try:
+                    import update
+                    if update.available():
+                        data["update"] = update.available()
+                except Exception:
+                    pass
+                return self._send(200, data)
             return self._send(404, {"error": "not found"})
 
         def do_POST(self):

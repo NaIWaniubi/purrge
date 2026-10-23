@@ -104,7 +104,8 @@ class Env:
 
     def run(self, code, check=True):
         env = dict(os.environ, HOME=str(self.home), USERPROFILE=str(self.home), PURRGE_HOME=str(self.home / ".purrge"), FAKE_LOG=str(self.log),
-                   PATH=f"{self.bin}{os.pathsep}{os.environ.get('PATH', '')}", PYTHONDONTWRITEBYTECODE="1", PYTHONUTF8="1", **self.extra)
+                   PATH=f"{self.bin}{os.pathsep}{os.environ.get('PATH', '')}", PYTHONDONTWRITEBYTECODE="1", PYTHONUTF8="1",
+                   PURRGE_NO_UPDATE_CHECK="1", PURRGE_TEST_NO_MONITOR="1", **self.extra)
         prog = "import sys, json\nsys.path.insert(0, %r)\n" % str(LIB) + textwrap.dedent(code)
         p = subprocess.run([sys.executable, "-c", prog], capture_output=True, text=True, env=env, timeout=120, encoding="utf-8")
         if check and p.returncode:
@@ -366,10 +367,77 @@ class TestPlatform(Base):
             self.assertIn("~/.purrge", r["protected"], f)
 
 
+class TestUpdate(Base):
+    """purrge update：成功更新保留设置；新版本坏了自动换回旧版本；已是最新不动。"""
+
+    def setUp(self):
+        super().setUp()
+        import shutil
+        self.ph = self.e.home / ".purrge"
+        self.app = self.ph / "app"
+        shutil.copytree(ROOT / "runtime", self.app, ignore=shutil.ignore_patterns("__pycache__"))
+        self._set_version(self.app, "0.2.2")            # 模拟装着旧版本
+        (self.ph / "config.json").write_text(json.dumps({"thresholdGB": 9, "intervalMinutes": 60, "optionalAction": "delete", "protect": ["~/x"]}))
+        (self.ph / "runs/20261020-000000").mkdir(parents=True)
+
+    def _set_version(self, runtime, v):
+        import re
+        f = runtime / "lib/common.py"
+        f.write_text(re.sub(r'VERSION = "[^"]+"', f'VERSION = "{v}"', f.read_text(encoding="utf-8")), encoding="utf-8")
+
+    def _ver(self, runtime):
+        import re
+        return re.search(r'VERSION = "([^"]+)"', (runtime / "lib/common.py").read_text(encoding="utf-8")).group(1)
+
+    def update(self, src):
+        env = dict(os.environ, HOME=str(self.e.home), USERPROFILE=str(self.e.home), PURRGE_HOME=str(self.ph), PYTHONUTF8="1",
+                   PURRGE_NO_UPDATE_CHECK="1", PURRGE_TEST_NO_MONITOR="1")
+        return subprocess.run([sys.executable, str(self.app / "lib/dg.py"), "update", "--from", str(src)], capture_output=True,
+                              text=True, encoding="utf-8", env=env, timeout=180)
+
+    def test_update_ok(self):
+        before = (self.ph / "config.json").read_text()
+        p = self.update(ROOT)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertEqual(self._ver(self.app), self._ver(ROOT / "runtime"))
+        self.assertEqual(self._ver(self.ph / "app.bak"), "0.2.2", "旧版本要留备份")
+        self.assertEqual((self.ph / "config.json").read_text(), before, "设置不能被改动")
+        self.assertTrue((self.ph / "runs/20261020-000000").is_dir(), "扫描记录要保留")
+        self.assertEqual(json.loads((self.ph / "monitor.test").read_text())["interval"], 60, "用原来的检查频率重新注册后台任务")
+
+    def test_update_rollback(self):
+        import shutil
+        bad = Path(self.e.tmp.name) / "bad"
+        shutil.copytree(ROOT, bad, ignore=shutil.ignore_patterns(".git", "__pycache__"))
+        self._set_version(bad / "runtime", "9.9.9")
+        (bad / "runtime/web/review.html").unlink()       # 新版本缺文件 → 自检必须失败
+        p = self.update(bad)
+        self.assertNotEqual(p.returncode, 0)
+        self.assertEqual(self._ver(self.app), "0.2.2", "自检失败要自动换回旧版本")
+        self.assertTrue((self.app / "web/review.html").is_file())
+        self.assertIn("已恢复到 0.2.2", p.stdout)
+
+    def test_already_latest(self):
+        self._set_version(self.app, self._ver(ROOT / "runtime"))
+        p = self.update(ROOT)
+        self.assertEqual(p.returncode, 0)
+        self.assertIn("已经是最新版本", p.stdout)
+        self.assertFalse((self.ph / "app.bak").exists())
+
+    def test_version_compare(self):
+        r = self.e.run(r'''
+        import update
+        print("@@" + json.dumps([update.newer("0.3.0", "0.3.0-beta"), update.newer("0.3.0-beta", "0.2.2"), update.newer("0.2.2", "0.3.0-beta"),
+              update.newer("0.3.0", "0.3.0"), update.check_latest(), update.available()]))
+        ''')
+        self.assertEqual(r, [True, True, False, False, None, None])
+
+
 class TestCLI(Base):
     def cli(self, *args):
         env = dict(os.environ, HOME=str(self.e.home), USERPROFILE=str(self.e.home), PURRGE_HOME=str(self.e.home / ".purrge"), FAKE_LOG=str(self.e.log),
-                   PATH=f"{self.e.bin}{os.pathsep}{os.environ.get('PATH', '')}")
+                   PATH=f"{self.e.bin}{os.pathsep}{os.environ.get('PATH', '')}", PYTHONUTF8="1",
+                   PURRGE_NO_UPDATE_CHECK="1", PURRGE_TEST_NO_MONITOR="1")
         return subprocess.run([sys.executable, str(LIB / "dg.py"), *args], capture_output=True, text=True, env=env, timeout=60, encoding="utf-8")
 
     def test_version_help(self):

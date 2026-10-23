@@ -8,6 +8,7 @@
   engine [名称]            查看或切换 AI：claude / codex / workbuddy / deepseek
   config [键 值]           查看或修改设置，如：config thresholdGB 20
   review                   重新打开最近一次的审查页面
+  update                   更新到最新版（设置、扫描记录、AI 引擎都保留）
   uninstall                关闭后台监控（--purge 同时删除设置和扫描记录）
   version                  版本与官方来源
 """
@@ -68,6 +69,9 @@ def _monitor_path(cfg):
 
 
 def install_monitor(cfg):
+    if os.environ.get("PURRGE_TEST_NO_MONITOR"):     # 测试专用：不碰真实的后台任务
+        (DG_HOME / "monitor.test").write_text(json.dumps({"interval": cfg["intervalMinutes"]}))
+        return
     plat.install_monitor(LABEL, plat.default_python(), INSTALLED_APP / "lib/dg.py", cfg["intervalMinutes"],
                          DG_HOME / "monitor.log", _monitor_path(cfg))
 
@@ -97,6 +101,11 @@ def cmd_check(args):
     st = _state()
     low = free < cfg["thresholdGB"] * 1024 ** 3
     print(time.strftime("%F %T"), "free", human(free), "threshold", cfg["thresholdGB"], "GB", "low" if low else "ok")
+    try:                                    # 顺带看一眼有没有新版本（每天最多联网一次，失败不影响检查）
+        import update
+        update.check_latest()
+    except Exception:
+        pass
     if not low and "--force" not in args:
         return
     if time.time() - st.get("lastPrompt", 0) < cfg["cooldownHours"] * 3600 and "--force" not in args:
@@ -171,8 +180,37 @@ def cmd_status(args):
     print(json.dumps({"free": human(free), "total": human(total), "thresholdGB": cfg["thresholdGB"],
                       "belowThreshold": free < cfg["thresholdGB"] * 1024 ** 3, "monitor": "运行中" if loaded else "未安装",
                       "intervalMinutes": cfg["intervalMinutes"], "lastRun": run.name if run else None,
-                      "ai": engines.NAMES.get(cfg.get("aiEngine"), "未设置（规则判断）")},
+                      "ai": engines.NAMES.get(cfg.get("aiEngine"), "未设置（规则判断）"),
+                      **({"update": f"有新版本 {_upd}，运行 purrge update 更新"} if (_upd := _update_available()) else {})},
                      ensure_ascii=False, indent=1))
+
+
+def _update_available():
+    try:
+        import update
+        return update.available()
+    except Exception:
+        return None
+
+
+def cmd_update(args):
+    import update
+    sys.exit(update.cmd_update(args))
+
+
+def cmd_post_update(args):
+    """更新后由新程序自己执行：重新注册后台任务、更新 AI 说明文件、自检。失败返回非 0，外层会换回旧版本。"""
+    from installer import install_skill
+    cfg = load_config()
+    install_monitor(cfg)
+    if cfg.get("aiEngine"):
+        install_skill(cfg["aiEngine"])
+    free, total = disk_status()
+    assert total > 0 and 0 <= free <= total, "磁盘信息读取失败"
+    assert (INSTALLED_APP / "web/review.html").is_file() and (INSTALLED_APP / "rules").is_dir(), "程序文件不完整"
+    if not os.environ.get("PURRGE_TEST_NO_MONITOR"):
+        assert plat.monitor_loaded(LABEL), "后台任务没有注册成功"
+    print(f"自检通过：Purrge {VERSION}")
 
 
 def cmd_uninstall(args):
@@ -199,7 +237,7 @@ def main():
     from installer import cmd_engine, cmd_install
     cmds = {"install": cmd_install, "setup": cmd_setup, "scan": cmd_scan, "run": cmd_run, "check": cmd_check,
             "review": cmd_review, "config": cmd_config, "status": cmd_status, "engine": cmd_engine,
-            "uninstall": cmd_uninstall}
+            "uninstall": cmd_uninstall, "update": cmd_update, "_post_update": cmd_post_update}
     if len(sys.argv) > 1 and sys.argv[1] in ("version", "--version", "-v"):
         print(f"Purrge {VERSION} by RabbittuX（官方来源：{OFFICIAL}）")
         return
