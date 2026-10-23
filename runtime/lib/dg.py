@@ -20,17 +20,18 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import plat  # noqa: E402
 from common import (OFFICIAL, VERSION, APP_DIR, CONFIG, DG_HOME, disk_status, human, latest_run, load_config, new_run_dir,  # noqa: E402
                     save_config)
 
 LABEL = "com.rabbittux.purrge"
-PLIST = Path.home() / "Library/LaunchAgents" / f"{LABEL}.plist"
+PLIST = plat.monitor_file(LABEL)
 INSTALLED_APP = DG_HOME / "app"
 STATE = DG_HOME / "state.json"
 
 
 def notify(title, text):
-    subprocess.run(["osascript", "-e", f'display notification "{text}" with title "{title}"'], capture_output=True)
+    plat.notify(title, text)
 
 
 def migrate_from_disk_guard():
@@ -67,34 +68,12 @@ def _monitor_path(cfg):
 
 
 def install_monitor(cfg):
-    PLIST.parent.mkdir(parents=True, exist_ok=True)
-    py = shutil.which("python3") or "/usr/bin/python3"
-    PLIST.write_text(f"""<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict>
-  <key>Label</key><string>{LABEL}</string>
-  <key>ProgramArguments</key><array><string>{py}</string><string>{INSTALLED_APP}/lib/dg.py</string><string>check</string></array>
-  <key>StartInterval</key><integer>{int(cfg['intervalMinutes']) * 60}</integer>
-  <key>RunAtLoad</key><true/>
-  <key>StandardOutPath</key><string>{DG_HOME}/monitor.log</string>
-  <key>StandardErrorPath</key><string>{DG_HOME}/monitor.log</string>
-  <key>EnvironmentVariables</key><dict><key>PATH</key><string>{_monitor_path(cfg)}</string></dict>
-</dict></plist>
-""", encoding="utf-8")
-    uid = os.getuid()
-    subprocess.run(["launchctl", "bootout", f"gui/{uid}/{LABEL}"], capture_output=True)
-    subprocess.run(["launchctl", "bootstrap", f"gui/{uid}", str(PLIST)], capture_output=True)
+    plat.install_monitor(LABEL, plat.default_python(), INSTALLED_APP / "lib/dg.py", cfg["intervalMinutes"],
+                         DG_HOME / "monitor.log", _monitor_path(cfg))
 
 
 def has_full_disk_access():
-    probe = Path.home() / "Library/Safari"
-    try:
-        list(os.scandir(probe))
-        return True
-    except PermissionError:
-        return False
-    except OSError:
-        return None
+    return plat.full_disk_access()
 
 
 def _state():
@@ -109,18 +88,7 @@ def ask_user(free):
     cfg = load_config()
     _, total = disk_status()
     th = f"{cfg['thresholdGB']:g} GB"
-    try:
-        p = subprocess.run(["osascript", "-l", "JavaScript", str(APP_DIR / "lib/alert.js"), human(free), human(total), th,
-                            str(1 - free / total), str(APP_DIR / "assets/icon-256.png")], capture_output=True, text=True,
-                           timeout=3600)
-        if p.returncode == 0 and p.stdout.strip() in ("scan", "later"):
-            return p.stdout.strip()
-    except (OSError, subprocess.TimeoutExpired):
-        pass
-    msg = f"主人，磁盘只剩 {human(free)} 了，已经低于你定的 {th} 啦。\\n要我帮你翻翻哪些能清掉吗？删哪些，你说了算。"
-    p = subprocess.run(["osascript", "-e", f'display dialog "{msg}" with title "Purrge" buttons {{"等会儿再说", "帮我看看"}} '
-                        f'default button "帮我看看" giving up after 120'], capture_output=True, text=True)
-    return "scan" if "帮我看看" in p.stdout else "later"
+    return plat.show_alert(APP_DIR, human(free), human(total), th, 1 - free / total)
 
 
 def cmd_check(args):
@@ -198,7 +166,7 @@ def cmd_status(args):
     import engines
     cfg = load_config()
     free, total = disk_status()
-    loaded = subprocess.run(["launchctl", "print", f"gui/{os.getuid()}/{LABEL}"], capture_output=True).returncode == 0
+    loaded = plat.monitor_loaded(LABEL)
     run = latest_run()
     print(json.dumps({"free": human(free), "total": human(total), "thresholdGB": cfg["thresholdGB"],
                       "belowThreshold": free < cfg["thresholdGB"] * 1024 ** 3, "monitor": "运行中" if loaded else "未安装",
@@ -208,8 +176,7 @@ def cmd_status(args):
 
 
 def cmd_uninstall(args):
-    subprocess.run(["launchctl", "bootout", f"gui/{os.getuid()}/{LABEL}"], capture_output=True)
-    PLIST.unlink(missing_ok=True)
+    plat.uninstall_monitor(LABEL)
     from installer import CLI_LINK, SKILL_DIRS
     if CLI_LINK.is_symlink():
         CLI_LINK.unlink()

@@ -4,6 +4,7 @@ import shutil
 import time
 from pathlib import Path
 
+import plat
 from common import HOME, disk_status, du_bytes, is_protected, load_config, load_rules
 
 
@@ -20,14 +21,7 @@ def _rm(path, errors):
 
 
 def _to_trash(path):
-    trash = HOME / ".Trash"
-    trash.mkdir(exist_ok=True)
-    name = Path(path).name
-    dest = trash / name
-    if dest.exists():
-        dest = trash / f"{Path(name).stem} {time.strftime('%H.%M.%S')}{Path(name).suffix}"
-    shutil.move(str(path), str(dest))
-    return dest
+    return plat.to_trash(path, HOME)
 
 
 def clean(review, ids, log=print):

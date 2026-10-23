@@ -60,42 +60,7 @@ def load_rules():
     return json.loads(RULES.read_text(encoding="utf-8"))
 
 
-def data_volume():
-    return "/System/Volumes/Data" if os.path.isdir("/System/Volumes/Data") else "/"
-
-
-def disk_status():
-    """返回 (可用字节, 总字节)。口径与 df 一致（不含 APFS 可清除空间）。"""
-    st = os.statvfs(data_volume())
-    return st.f_bavail * st.f_frsize, st.f_blocks * st.f_frsize
-
-
-def du_bytes(path, timeout=600):
-    """目录实际占用（du -sk，跨卷不统计）。权限不足的部分会被跳过，返回 (字节, 是否有受限子目录)。"""
-    try:
-        p = subprocess.run(["du", "-skx", str(path)], capture_output=True, text=True, timeout=timeout)
-    except subprocess.TimeoutExpired:
-        return 0, True
-    out = p.stdout.strip().split("\t")[0] if p.stdout.strip() else "0"
-    try:
-        kb = int(out)
-    except ValueError:
-        kb = 0
-    return kb * 1024, bool(p.stderr.strip())
-
-
-def running_processes():
-    try:
-        out = subprocess.run(["ps", "-axo", "comm="], capture_output=True, text=True).stdout
-    except OSError:
-        return set()
-    names = set()
-    for line in out.splitlines():
-        line = line.strip()
-        if line:
-            names.add(os.path.basename(line))
-            names.add(line)
-    return names
+from plat import data_volume, disk_status, du_bytes, running_processes  # noqa: E402,F401  系统相关实现见 plat/
 
 
 def human(n):

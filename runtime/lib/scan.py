@@ -2,8 +2,9 @@
 import glob
 import json
 import os
-import subprocess
 import time
+
+import plat
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -97,18 +98,14 @@ def scan(progress=print):
     ls = rules["largeScan"]
     progress("查找大文件…")
     excl = [str(expand(e)) for e in ls.get("excludeUnder", [])]
-    try:
-        out = subprocess.run(["mdfind", "-onlyin", str(HOME), f"kMDItemFSSize > {ls['fileMinMB'] * MB}"],
-                             capture_output=True, text=True, timeout=120).stdout.splitlines()
-    except (OSError, subprocess.TimeoutExpired):
-        out = []
+    out = plat.find_large_files(HOME, ls['fileMinMB'] * MB)
     for path in out:
         if not os.path.isfile(path) or any(path.startswith(e + os.sep) or path == e for e in excl):
             continue
         if "/." in path.replace(str(HOME), "", 1) or any(path.startswith(s + os.sep) for s in seen):
             continue  # 隐藏目录和已列出的缓存里的文件不重复列
         try:
-            size = os.stat(path).st_blocks * 512
+            size = plat.file_bytes(path)
         except OSError:
             continue
         add({"path": path, "sizeBytes": size, "kind": "large-file", "name": Path(path).name, "mode": "whole",
@@ -121,18 +118,9 @@ def scan(progress=print):
         root = expand(root)
         if not root.is_dir():
             continue
-        try:
-            p = subprocess.run(["du", "-kx", "-d", str(ls.get("dirDepth", 2)), str(root)], capture_output=True,
-                               text=True, timeout=900)
-        except subprocess.TimeoutExpired:
+        rows = plat.dir_sizes(root, ls.get("dirDepth", 2))
+        if rows is None:
             continue
-        rows = []
-        for line in p.stdout.splitlines():
-            kb, _, path = line.partition("\t")
-            try:
-                rows.append((int(kb) * 1024, path))
-            except ValueError:
-                pass
         big = [(s, pth) for s, pth in rows if s >= ls["dirMinMB"] * MB and Path(pth) != root]
         # 只保留最"深"的大文件夹，避免父子重复
         big.sort(key=lambda r: -len(r[1]))

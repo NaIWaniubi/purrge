@@ -2,13 +2,13 @@
 import json
 import os
 import secrets
-import subprocess
 import threading
 import time
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+import plat
 from clean import clean
 from common import WEB_DIR, disk_status, load_config, save_config
 
@@ -75,9 +75,8 @@ def serve(run_dir, open_browser=True, log=print):
                 it = next((x for x in review["items"] if x["id"] == str(body.get("id"))), None)
                 if not it or not os.path.exists(it["path"]):
                     return self._send(200, {"ok": False})
-                folder = os.path.isdir(it["path"]) and not it["path"].endswith((".app", ".photoslibrary"))
-                # 文件夹直接打开浏览内容；文件（以及 .app 这类包）在所在文件夹里选中
-                subprocess.run(["open", it["path"]] if folder else ["open", "-R", it["path"]], capture_output=True)
+                folder = os.path.isdir(it["path"]) and not plat.is_package(it["path"])
+                plat.reveal(it["path"], folder)
                 return self._send(200, {"ok": True, "opened": "folder" if folder else "file"})
             if self.path == "/api/close":
                 state["done"] = True
