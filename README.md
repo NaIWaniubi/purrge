@@ -124,7 +124,7 @@ bash install.sh --engine codex --threshold 20 --yes
 irm https://raw.githubusercontent.com/RabbittuX/purrge/master/install.ps1 | iex
 ```
 
-需要 Python 3.8 以上。后台检查使用「任务计划程序」，清理时「需要你决定」的项目移到回收站。
+没有 Python 时会自动安装（只装给当前用户）。后台检查使用「任务计划程序」，清理时「需要你决定」的项目移到回收站。
 
 ### 支持的 AI 引擎
 
@@ -230,7 +230,8 @@ purrge update
 ## 📋 系统要求
 
 - macOS 或 Windows 10/11
-- Python 3.8 及以上（未安装时，安装程序会给出提示）
+- Python 3.8 及以上（没有时安装程序会自动安装：Mac 用苹果官方命令行开发者工具，Windows 用 python.org 官方安装包，无需管理员权限）
+- 使用 WorkBuddy / DeepSeek（以及 Windows 上的 Codex）时需要 Node.js；没有时自动下载官方 LTS 版本到 Purrge 自己的目录，不改动系统
 - Claude Code、Codex、WorkBuddy 或 DeepSeek Harness 任一可用账号（AI 分析使用用户自己的额度，支持 Codex 免费账号；DeepSeek 使用自己的 API Key）。AI 暂时不可用时自动切换为规则判断，基础功能不受影响
 - 可选：为「终端」授予「完全磁盘访问权限」，以扩大系统缓存的扫描范围
 
