@@ -145,7 +145,9 @@ def connect(cfg, engine, path):
         cfg[f"{engine}Path"] = engines.upgrade(engine, path, say=lambda m: say(f"    {m}")) or path
         good, model, err = engines.test(cfg, log=lambda m: say(f"    {m}"))
         low = err.lower()
-    if not good and any(k in low for k in ("login", "log in", "auth", "401", "unauthorized", "api key")):
+    if not good and engine == "workbuddy" and not has_tty():   # CodeBuddy 只能在交互界面登录，没有终端时拉起会卡住
+        warn("WorkBuddy 还没登录：请在终端运行 codebuddy，输入 /login 登录后，再运行 purrge engine workbuddy")
+    elif not good and any(k in low for k in ("login", "log in", "auth", "401", "unauthorized", "api key")):
         warn(f"{name} 需要重新登录，正在打开登录页面…")
         engines.login(engine, cfg[f"{engine}Path"])
         good, model, err = engines.test(cfg, log=lambda m: say(f"    {m}"))

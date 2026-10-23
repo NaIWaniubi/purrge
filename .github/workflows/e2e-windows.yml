@@ -1,0 +1,69 @@
+name: e2e-windows
+# 在全新的 Windows 上，按普通用户的方式（irm 网址 | 安装）从零安装 Purrge：
+# 没有 Python、没有 Node.js → 自动安装 → 选 WorkBuddy → 后台任务 → 扫描 → 审查页面 → 清理进回收站
+on:
+  workflow_dispatch:
+  push:
+    branches: [v0.3-dev]
+jobs:
+  e2e:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-2025]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: 从零安装（模拟没有 Python / Node.js 的电脑）
+        shell: powershell
+        env:
+          PURRGE_BRANCH: ${{ github.sha }}
+          PURRGE_YES: "1"
+          PURRGE_FORCE_NO_PY: "1"
+        run: |
+          $env:Path = "C:\Windows\System32;C:\Windows;C:\Windows\System32\WindowsPowerShell\v1.0"
+          [Net.ServicePointManager]::SecurityProtocol = 'Tls12'
+          $s = irm "https://raw.githubusercontent.com/RabbittuX/purrge/${{ github.sha }}/install.ps1"
+          & ([scriptblock]::Create($s)) --engine workbuddy --threshold 15 --yes
+      - name: 检查安装结果
+        shell: powershell
+        run: |
+          $p = "$env:LOCALAPPDATA\Microsoft\WindowsApps\purrge.cmd"
+          if (-not (Test-Path $p)) { throw "没有 purrge 命令" }
+          & $p version
+          & $p status
+          $st = (& $p status | Out-String | ConvertFrom-Json)
+          if ($st.monitor -ne "运行中") { throw "后台任务没有注册" }
+          schtasks /query /fo LIST | Select-String -Pattern "purrge" -SimpleMatch
+          $cb = Get-ChildItem "$env:USERPROFILE\.purrge\node\codebuddy.cmd" -ErrorAction SilentlyContinue
+          if (-not $cb) { throw "WorkBuddy 命令行没有装到 Purrge 自带的 Node 里" }
+          & $cb.FullName --version
+          Get-Content "$env:USERPROFILE\.purrge\config.json"
+      - name: 扫描 + 审查页面 + 清理进回收站
+        shell: powershell
+        run: |
+          $p = "$env:LOCALAPPDATA\Microsoft\WindowsApps\purrge.cmd"
+          $junk = "$env:TEMP\purrge-e2e-junk"; New-Item -ItemType Directory -Force $junk | Out-Null
+          1..5 | ForEach-Object { [IO.File]::WriteAllBytes("$junk\f$_.bin", (New-Object byte[] (20MB))) }
+          $proc = Start-Process cmd -ArgumentList "/c `"$p`" run --no-open > `"$env:TEMP\run.log`" 2>&1" -PassThru -WindowStyle Hidden
+          $url = $null
+          for ($i = 0; $i -lt 120 -and -not $url; $i++) {
+            Start-Sleep 5
+            $f = Get-ChildItem "$env:USERPROFILE\.purrge\runs\*\review-url.txt" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($f) { $url = Get-Content $f.FullName -Raw }
+          }
+          Get-Content "$env:TEMP\run.log" -Encoding UTF8
+          if (-not $url) { throw "扫描没有完成" }
+          $token = ($url -split "token=")[1].Trim()
+          $base = ($url -split "/\?")[0]
+          $page = Invoke-WebRequest "$url" -UseBasicParsing
+          if ($page.StatusCode -ne 200) { throw "审查页面打不开" }
+          $r = Invoke-RestMethod "$base/api/review" -Headers @{ "X-DG-Token" = $token }
+          "共 $($r.review.items.Count) 项，判断来源：$($r.review.judgedBy)"
+          $r.review.items | Select-Object -First 8 | ForEach-Object { "{0,-9} {1:N1}MB  {2}" -f $_.tier, ($_.sizeBytes / 1MB), $_.path }
+          $item = $r.review.items | Where-Object { $_.tier -eq "primary" } | Select-Object -First 1
+          if ($item) {
+            $res = Invoke-RestMethod "$base/api/clean" -Method Post -Headers @{ "X-DG-Token" = $token } -ContentType "application/json" -Body (@{ ids = @($item.id) } | ConvertTo-Json)
+            "清理：$($item.path) → $($res.results[0].status)，释放 $([math]::Round($res.freedBytes / 1MB, 1)) MB"
+          }
+          Invoke-RestMethod "$base/api/close" -Method Post -Headers @{ "X-DG-Token" = $token } | Out-Null
+          Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
