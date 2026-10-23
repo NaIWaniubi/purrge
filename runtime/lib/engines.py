@@ -12,6 +12,8 @@ import tempfile
 import urllib.request
 from pathlib import Path
 
+import nodejs
+
 HOME = Path.home()
 NAMES = {"claude": "Claude Code", "codex": "Codex", "workbuddy": "WorkBuddy", "deepseek": "DeepSeek Harness"}
 BIN = {"claude": "claude", "codex": "codex", "workbuddy": "codebuddy", "deepseek": "dsh"}
@@ -29,6 +31,7 @@ def _run(cmd, **kw):
         kw.setdefault("encoding", "utf-8")
         kw.setdefault("errors", "replace")
     kw.setdefault("stdin", subprocess.DEVNULL) if "input" not in kw else None
+    kw["env"] = nodejs.env(kw.get("env"))   # 用的是 Purrge 自带的 Node 时，npm 装的命令行要能找到它
     try:
         return subprocess.run(cmd, capture_output=True, text=True, **kw)
     except (OSError, subprocess.TimeoutExpired) as e:
@@ -46,16 +49,20 @@ def _candidates(engine):
     paths = [found] if found else []
     if engine in NPM_PKG:    # npm 全局安装的命令行
         b = BIN[engine]
-        paths += [HOME / ".local/bin" / b, "/opt/homebrew/bin/" + b, "/usr/local/bin/" + b, HOME / ".npm-global/bin" / b]
-        npm = shutil.which("npm")
+        exe = f"{b}.cmd" if sys.platform == "win32" else b
+        paths += [HOME / ".local/bin" / b, "/opt/homebrew/bin/" + b, "/usr/local/bin/" + b, HOME / ".npm-global/bin" / b,
+                  nodejs.bin_dir() / exe]
+        if sys.platform == "win32":
+            paths.append(Path(os.environ.get("APPDATA", HOME / "AppData/Roaming")) / "npm" / exe)
+        npm = nodejs.npm()
         if npm:
             prefix = _run([npm, "prefix", "-g"], timeout=20).stdout.strip()
-            if prefix:
-                paths.append(Path(prefix) / "bin" / b)
+            if prefix:   # Windows 的 npm 全局命令直接放在 prefix 目录，Mac 在 prefix/bin
+                paths.append(Path(prefix) / exe if sys.platform == "win32" else Path(prefix) / "bin" / b)
     elif sys.platform == "win32":    # Windows：官方安装器放在 ~/.local/bin，npm 全局命令在 %APPDATA%\\npm
         exe = BIN[engine]
         appdata = Path(os.environ.get("APPDATA", HOME / "AppData/Roaming"))
-        paths += [HOME / ".local/bin" / f"{exe}.exe", appdata / "npm" / f"{exe}.cmd"]
+        paths += [HOME / ".local/bin" / f"{exe}.exe", appdata / "npm" / f"{exe}.cmd", nodejs.bin_dir() / f"{exe}.cmd"]
     elif engine == "claude":
         paths += [HOME / ".local/bin/claude", HOME / ".claude/local/claude", "/opt/homebrew/bin/claude", "/usr/local/bin/claude"]
     else:   # ChatGPT / Codex 桌面版自带的 codex 往往比命令行装的新
@@ -85,14 +92,19 @@ def version_text(path):
 
 # ---------- 安装 ----------
 
-def install(engine, say=print):
-    """安装最新版，成功返回路径。"""
+def _npm_install(pkg, npm):
+    subprocess.run([npm, "install", "-g", pkg], env=nodejs.env())
+
+
+def install(engine, say=print, confirm=None):
+    """安装最新版，成功返回路径。需要 npm 但电脑上没有 Node.js 时，先（征得同意后）自动安装 Node.js。"""
     if engine in NPM_PKG:
-        if not shutil.which("npm"):
-            say(f"{NAMES[engine]} 需要先安装 Node.js（自带 npm）：https://nodejs.org ，装好后重新运行安装命令")
+        npm = nodejs.ensure(say, confirm)
+        if not npm:
+            say(f"{NAMES[engine]} 需要 Node.js（自带 npm）：可以从 https://nodejs.org 手动安装，装好后重新运行安装命令")
             return None
         say(f"正在安装最新版 {NAMES[engine]} 命令行（npm）…")
-        subprocess.run(["npm", "install", "-g", NPM_PKG[engine]])
+        _npm_install(NPM_PKG[engine], npm)
         return find(engine)
     if engine == "claude":
         say("正在安装最新版 Claude Code（官方安装脚本）…")
@@ -100,32 +112,36 @@ def install(engine, say=print):
             p = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "irm https://claude.ai/install.ps1 | iex"])
         else:
             p = subprocess.run("curl -fsSL https://claude.ai/install.sh | bash", shell=True)
-        if p.returncode != 0 and shutil.which("npm"):
+        if p.returncode != 0 and nodejs.npm():
             say("官方脚本失败，改用 npm 安装…")
-            subprocess.run(["npm", "install", "-g", "@anthropic-ai/claude-code@latest"])
+            _npm_install("@anthropic-ai/claude-code@latest", nodejs.npm())
         return find("claude")
     say("正在安装最新版 Codex…")
-    if shutil.which("npm"):
-        subprocess.run(["npm", "install", "-g", "@openai/codex@latest"])
+    if nodejs.npm():
+        _npm_install("@openai/codex@latest", nodejs.npm())
     elif shutil.which("brew"):
         subprocess.run(["brew", "install", "codex"])
     elif sys.platform != "win32":
         _install_codex_release(say)
     else:
-        say("Codex 需要先安装 Node.js（自带 npm）：https://nodejs.org ，装好后重新运行安装命令")
+        npm = nodejs.ensure(say, confirm)
+        if npm:
+            _npm_install("@openai/codex@latest", npm)
+        else:
+            say("Codex 需要 Node.js（自带 npm）：可以从 https://nodejs.org 手动安装，装好后重新运行安装命令")
     return find("codex")
 
 
 def upgrade(engine, path, say=print):
     """把已有的命令行工具升级到最新版。"""
     if engine in NPM_PKG:
-        if shutil.which("npm"):
-            subprocess.run(["npm", "install", "-g", NPM_PKG[engine]])
+        if nodejs.npm():
+            _npm_install(NPM_PKG[engine], nodejs.npm())
         return find(engine)
     if engine == "claude":
         subprocess.run([path, "update"])
-    elif "node_modules" in os.path.realpath(path) and shutil.which("npm"):
-        subprocess.run(["npm", "install", "-g", "@openai/codex@latest"])
+    elif "node_modules" in os.path.realpath(path) and nodejs.npm():
+        _npm_install("@openai/codex@latest", nodejs.npm())
     elif os.path.realpath(path).startswith(("/opt/homebrew", "/usr/local/Cellar")) and shutil.which("brew"):
         subprocess.run(["brew", "upgrade", "codex"])
     else:

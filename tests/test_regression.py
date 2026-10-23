@@ -371,6 +371,90 @@ class TestPlatform(Base):
             self.assertIn("~/.purrge", r["protected"], f)
 
 
+class TestNodeAutoInstall(Base):
+    """没有 Node.js 时自动安装：已有 npm 不动、用户拒绝不装、官方压缩包核对 SHA256、装好后能用来装 WorkBuddy。"""
+
+    SETUP = r'''
+    import os, sys, io, hashlib, tarfile, zipfile, shutil
+    from pathlib import Path
+    H = Path.home()
+    empty = H / "emptybin"; empty.mkdir(exist_ok=True)
+    os.environ["PATH"] = str(empty)             # 模拟电脑上没有 node / npm / brew
+    WIN = sys.platform == "win32"
+    def make_dist(bad_sum=False):
+        import nodejs
+        dist = H / "dist"; ver = "v22.1.0"; (dist / ver).mkdir(parents=True, exist_ok=True)
+        (dist / "index.json").write_text(json.dumps([{"version": "v23.0.0", "lts": False}, {"version": ver, "lts": "Jod"}]))
+        name = f"node-{ver}-{'win' if WIN else 'darwin'}-{nodejs._arch()}"
+        npm_py = ("import os, sys, pathlib\n"
+                  "a = sys.argv[1:]\n"
+                  "if a[:2] == ['prefix', '-g']: print(os.environ['npm_config_prefix']); sys.exit(0)\n"
+                  "pre = pathlib.Path(os.environ['npm_config_prefix'])\n"
+                  "open(pre / 'npm-calls.txt', 'a').write(' '.join(a) + '\\n')\n"
+                  "if os.name == 'nt': (pre / 'codebuddy.cmd').write_text('@echo 2.0.0\\r\\n')\n"
+                  "else:\n"
+                  "    (pre / 'bin').mkdir(exist_ok=True); f = pre / 'bin' / 'codebuddy'; f.write_text('#!/bin/sh\\necho 2.0.0\\n'); f.chmod(0o755)\n")
+        buf = io.BytesIO()
+        if WIN:
+            with zipfile.ZipFile(buf, "w") as z:
+                z.writestr(f"{name}/npm.py", npm_py)
+                z.writestr(f"{name}/npm.cmd", f'@"{sys.executable}" "%~dp0npm.py" %*\r\n')
+            fname = name + ".zip"
+        else:
+            with tarfile.open(fileobj=buf, mode="w:gz") as t:
+                data = (f"#!{sys.executable}\n" + npm_py).encode()
+                ti = tarfile.TarInfo(f"{name}/bin/npm"); ti.size = len(data); ti.mode = 0o755
+                t.addfile(ti, io.BytesIO(data))
+            fname = name + ".tar.gz"
+        (dist / ver / fname).write_bytes(buf.getvalue())
+        h = "0" * 64 if bad_sum else hashlib.sha256(buf.getvalue()).hexdigest()
+        (dist / ver / "SHASUMS256.txt").write_text(f"{h}  {fname}\n{'1'*64}  other.tar.gz\n")
+        nodejs.DIST = dist.as_uri()
+    '''
+
+    def test_existing_npm_untouched(self):
+        r = self.e.run(textwrap.dedent(self.SETUP) + textwrap.dedent(r'''
+        npm = empty / ("npm.cmd" if WIN else "npm"); npm.write_text("@echo 1\r\n" if WIN else "#!/bin/sh\necho 1\n"); npm.chmod(0o755)
+        import nodejs
+        nodejs.DIST = "http://127.0.0.1:9/never"   # 已有 npm 时绝不能联网下载
+        got = nodejs.ensure(say=lambda m: None, confirm=lambda q: 1/0)
+        e = nodejs.env()
+        print("@@" + json.dumps([os.path.normcase(got) == os.path.normcase(str(npm)), (H / ".purrge/node").exists(), "npm_config_prefix" in e, e["PATH"] == os.environ["PATH"]]))
+        '''))
+        self.assertEqual(r, [True, False, False, True], "已经有 npm 时：不问、不下载、不改环境变量")
+
+    def test_declined(self):
+        r = self.e.run(textwrap.dedent(self.SETUP) + textwrap.dedent(r'''
+        make_dist()
+        import nodejs
+        asked = []
+        got = nodejs.ensure(say=lambda m: None, confirm=lambda q: asked.append(q) or False)
+        print("@@" + json.dumps([got, len(asked), (H / ".purrge/node").exists()]))
+        '''))
+        self.assertEqual(r, [None, 1, False])
+
+    def test_portable_install_and_workbuddy(self):
+        r = self.e.run(textwrap.dedent(self.SETUP) + textwrap.dedent(r'''
+        make_dist()
+        import nodejs, engines
+        p = engines.install("workbuddy", say=lambda m: None, confirm=lambda q: True)
+        calls = (H / ".purrge/node/npm-calls.txt").read_text()
+        print("@@" + json.dumps([bool(nodejs.npm()), str(H / ".purrge/node") in (p or ""), engines.version_text(p), "@tencent-ai/codebuddy-code@latest" in calls,
+                                 nodejs.env()["npm_config_prefix"] == str(H / ".purrge/node")]))
+        '''))
+        self.assertEqual(r, [True, True, "2.0.0", True, True])
+
+    def test_checksum_mismatch(self):
+        r = self.e.run(textwrap.dedent(self.SETUP) + textwrap.dedent(r'''
+        make_dist(bad_sum=True)
+        import nodejs
+        msgs = []
+        got = nodejs.ensure(say=msgs.append, confirm=lambda q: True)
+        print("@@" + json.dumps([got, (H / ".purrge/node").exists(), any("校验" in m for m in msgs)]))
+        '''))
+        self.assertEqual(r, [None, False, True], "校验不通过必须拒绝安装")
+
+
 class TestUpdate(Base):
     """purrge update：成功更新保留设置；新版本坏了自动换回旧版本；已是最新不动。"""
 

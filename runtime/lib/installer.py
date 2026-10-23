@@ -1,4 +1,4 @@
-"""交互式安装：选 AI 引擎（Claude Code / Codex）→ 检查安装 → 检查登录 → 测试连接 → 设阈值 → 注册后台监控。
+"""交互式安装：选 AI 引擎（Claude Code / Codex / WorkBuddy / DeepSeek）→ 缺 Node.js 时自动安装 → 检查安装 → 检查登录 → 测试连接 → 设阈值 → 注册后台监控。
 用 /dev/tty 读输入，所以 `curl ... | bash` 方式运行也能正常提问。"""
 import os
 import shutil
@@ -53,6 +53,12 @@ def ask(prompt, default=""):
         return None
     ans = ans.strip()
     return ans if ans else default
+
+
+def confirm_yes(question):
+    """问一句 [Y/n]，直接回车算同意；没有终端（AI 代为安装）时视为同意，安装本来就是用户要求的。"""
+    ans = ask(f"    {question}", "y")
+    return ans is None or ans.strip().lower() in ("y", "yes", "是", "好")
 
 
 def _flag(args, name):
@@ -112,7 +118,7 @@ def ensure_engine(engine):
         ok(f"已安装 {name} {engines.version_text(path)}（{path}）")
     else:
         warn(f"没有检测到 {name}，开始安装最新版…")
-        path = engines.install(engine, say=lambda m: say(f"    {m}"))
+        path = engines.install(engine, say=lambda m: say(f"    {m}"), confirm=confirm_yes)
         if not path:
             fail(f"{name} 安装失败。请按官网说明手动安装后，重新运行安装命令。")
         ok(f"{name} 安装完成 {engines.version_text(path)}")

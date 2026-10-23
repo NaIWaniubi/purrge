@@ -14,3 +14,39 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: python -m unittest discover -s tests -v
+
+  installer-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: install.ps1 语法（Windows PowerShell 5.1）
+        shell: powershell
+        run: |
+          $errs = $null
+          [System.Management.Automation.Language.Parser]::ParseInput((Get-Content -Raw -Encoding UTF8 install.ps1), [ref]$null, [ref]$errs) | Out-Null
+          if ($errs) { $errs; exit 1 }
+      - name: 没有 Python 的电脑上用 irm | iex 方式安装
+        shell: powershell
+        env:
+          PURRGE_BRANCH: ${{ github.sha }}
+          PURRGE_YES: "1"
+          PURRGE_PS1_CHECK_ONLY: "1"
+        run: |
+          $env:Path = "C:\Windows\System32;C:\Windows;C:\Windows\System32\WindowsPowerShell\v1.0"
+          Get-Content -Raw -Encoding UTF8 install.ps1 | Invoke-Expression
+      - name: Python 已装到当前用户目录
+        shell: powershell
+        run: |
+          $p = Get-ChildItem "$env:LOCALAPPDATA\Programs\Python\Python3*\python.exe" | Select-Object -First 1
+          if (-not $p) { throw "Python 没有装上" }
+          & $p.FullName --version
+
+  installer-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: install.sh 语法 + 缺 Python 分支
+        run: |
+          bash -n install.sh
+          PURRGE_FORCE_NO_PY=1 PURRGE_SH_CHECK_ONLY=1 bash install.sh | tee out.txt
+          grep -q "Purrge" out.txt
