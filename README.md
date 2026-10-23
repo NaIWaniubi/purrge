@@ -121,8 +121,10 @@ bash install.sh --engine codex --threshold 20 --yes
 在 PowerShell 中执行：
 
 ```powershell
-irm https://raw.githubusercontent.com/RabbittuX/purrge/master/install.ps1 | iex
+[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; irm https://raw.githubusercontent.com/RabbittuX/purrge/master/install.ps1 | iex
 ```
+
+命令开头的 `SecurityProtocol` 用于让较老的 Windows / Windows Server 使用 TLS 1.2 连接 GitHub，否则会报「基础连接已经关闭」。
 
 没有 Python 时会自动安装（只装给当前用户）。后台检查使用「任务计划程序」，清理时「需要你决定」的项目移到回收站。
 
