@@ -31,6 +31,7 @@ jobs:
           PURRGE_BRANCH: ${{ github.sha }}
           PURRGE_YES: "1"
           PURRGE_PS1_CHECK_ONLY: "1"
+          PURRGE_FORCE_NO_PY: "1"
         run: |
           $env:Path = "C:\Windows\System32;C:\Windows;C:\Windows\System32\WindowsPowerShell\v1.0"
           Get-Content -Raw -Encoding UTF8 install.ps1 | Invoke-Expression

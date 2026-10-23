@@ -21,7 +21,7 @@ function Update-PathEnv {
   $env:Path = [Environment]::GetEnvironmentVariable("Path", "User") + ";" + [Environment]::GetEnvironmentVariable("Path", "Machine")
 }
 
-$py = Find-Py
+$py = if ($env:PURRGE_FORCE_NO_PY) { $null } else { Find-Py }   # CI 自检用：模拟没有 Python
 if (-not $py) {
   Write-Host "没有检测到 Python 3.8 以上，Purrge 需要它才能运行。"
   $ans = if ($yes) { "y" } else { Read-Host "现在自动安装 Python 官方版本吗？（只装给当前用户，不需要管理员权限）[Y/n]" }
