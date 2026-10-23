@@ -104,7 +104,7 @@ def ensure(say=print, confirm=None):
     found = npm()
     if found:
         return found
-    if confirm and not confirm("需要先安装 Node.js（约 30～50MB，官方 LTS 版本）。现在自动安装吗？[Y/n]："):
+    if confirm and not confirm("需要先安装 Node.js（官方 LTS 版本，下载约 50MB、占用约 200MB，只给 Purrge 用）。现在自动安装吗？[Y/n]："):
         return None
     try:
         p = _install_portable(say)
