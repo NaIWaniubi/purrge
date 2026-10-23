@@ -60,7 +60,10 @@ open(os.environ["FAKE_LOG"], "a").write(json.dumps({"bin": "codebuddy", "args": 
 if "--version" in args:
     print("2.173.0"); sys.exit(0)
 sys.stdin.read()
-print(json.dumps({"type": "result", "result": "OK"}))
+if args[args.index("--output-format") + 1] == "text":
+    print("OK")
+else:   # json 模式输出整段对话（真实 CodeBuddy 会带上很长的系统提示）
+    print(json.dumps([{"type": "message", "role": "assistant", "content": [{"type": "output_text", "text": "OK"}]}, {"type": "result", "result": "OK"}]))
 '''
 FAKE["dsh"] = r'''#!/usr/bin/env python3
 import json, os, sys
@@ -286,6 +289,7 @@ class TestNewEngines(Base):
         a = [c["args"] for c in self.e.calls() if c["bin"] == "codebuddy" and "-p" in c["args"]][0]
         self.assertEqual(a[a.index("--tools") + 1], "", "WorkBuddy 必须关掉全部工具")
         self.assertIn("--no-session-persistence", a)
+        self.assertEqual(a[a.index("--output-format") + 1], "text", "json 模式输出过长会被截断")
 
     def test_deepseek_patch_and_key(self):
         r = self.e.run(r'''

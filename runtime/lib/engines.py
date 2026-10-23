@@ -243,7 +243,8 @@ def _dsh_tools_disabled(path):
 
 def _ask_once(engine, path, prompt, model, timeout):
     if engine == "workbuddy":
-        cmd = [path, "-p", "--output-format", "json", "--tools", "", "--no-session-persistence"]
+        # 用纯文本输出：json 模式会带上整段对话（含它自己很长的系统提示），超过约 54KB 时输出被截断
+        cmd = [path, "-p", "--output-format", "text", "--tools", "", "--no-session-persistence"]
         if model:
             cmd += ["--model", model]
         with tempfile.TemporaryDirectory() as tmp:
@@ -251,11 +252,7 @@ def _ask_once(engine, path, prompt, model, timeout):
         out = p.stdout.strip()
         if p.returncode != 0 or not out or "Authentication required" in out:
             raise AIError((p.stderr or p.stdout)[-400:] or "CodeBuddy 没有返回内容")
-        try:
-            d = json.loads(out)
-            return d.get("result") or d.get("text") or out if isinstance(d, dict) else out
-        except json.JSONDecodeError:
-            return out
+        return out
     if engine == "deepseek":
         if not _dsh_tools_disabled(path):
             raise AIError("DeepSeek Harness 的工具插件没能全部关闭，为安全起见不调用（可能是 dsh 版本变化）")
