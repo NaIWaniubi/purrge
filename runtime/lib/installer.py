@@ -216,7 +216,7 @@ def cmd_install(args):
     if sys.platform not in ("darwin", "win32"):
         fail("Purrge 目前只支持 macOS 和 Windows")
     say(f"\n{B}🐾 Purrge {VERSION} by RabbittuX{X}  {D}官方来源：{OFFICIAL}{X}")
-    say(f"{D}基于 AI 的 {"Windows" if WIN else "macOS"} 磁盘空间管理工具：低空间预警、智能识别可清理项、经用户审批后执行清理{X}")
+    say(f"{D}基于 AI 的 {'Windows' if WIN else 'macOS'} 磁盘空间管理工具：低空间预警、智能识别可清理项、经用户审批后执行清理{X}")
     migrate_from_disk_guard()
     cfg = load_config()
     engine = choose_engine(args)
