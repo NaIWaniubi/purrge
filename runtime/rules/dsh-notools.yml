@@ -1,0 +1,9 @@
+# Purrge 调用 DeepSeek Harness 时叠加的补丁：关掉全部可以动文件 / 执行命令的工具插件，AI 只能"看清单、写判断"
+- id: tool-bash
+  disabled: true
+- id: tool-pwsh
+  disabled: true
+- id: tool-jobs
+  disabled: true
+- id: tool-fs
+  disabled: true

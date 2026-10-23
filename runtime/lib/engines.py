@@ -1,4 +1,4 @@
-"""AI 引擎：Claude Code 或 Codex。负责找到命令行工具、安装最新版、检查/拉起登录、调用 AI。
+"""AI 引擎：Claude Code、Codex、WorkBuddy（CodeBuddy 命令行）、DeepSeek Harness（dsh）。负责找到命令行工具、安装最新版、检查/拉起登录、调用 AI。
 Purrge 本身不依赖任何一家，引擎不可用时 classify.py 会退回规则判断。"""
 import json
 import os
@@ -12,7 +12,12 @@ import urllib.request
 from pathlib import Path
 
 HOME = Path.home()
-NAMES = {"claude": "Claude Code", "codex": "Codex"}
+NAMES = {"claude": "Claude Code", "codex": "Codex", "workbuddy": "WorkBuddy", "deepseek": "DeepSeek Harness"}
+BIN = {"claude": "claude", "codex": "codex", "workbuddy": "codebuddy", "deepseek": "dsh"}
+NPM_PKG = {"workbuddy": "@tencent-ai/codebuddy-code@latest", "deepseek": "@deepseek-ai/dsh@latest"}
+DSH_PATCH = Path(__file__).resolve().parent.parent / "rules" / "dsh-notools.yml"
+DSH_TOOL_PLUGINS = ("tool-bash", "tool-pwsh", "tool-jobs", "tool-fs")
+SECRETS = Path(os.environ.get("PURRGE_HOME", HOME / ".purrge")) / "secrets.json"   # 只存 DeepSeek API Key，权限 600
 MODEL_ERRORS = ("not supported", "requires a newer version", "model_not_found", "does not exist", "invalid model")
 
 
@@ -33,9 +38,17 @@ def _version(path):
 
 
 def _candidates(engine):
-    found = shutil.which(engine)
+    found = shutil.which(BIN.get(engine, engine))
     paths = [found] if found else []
-    if engine == "claude":
+    if engine in NPM_PKG:    # npm 全局安装的命令行
+        b = BIN[engine]
+        paths += [HOME / ".local/bin" / b, "/opt/homebrew/bin/" + b, "/usr/local/bin/" + b, HOME / ".npm-global/bin" / b]
+        npm = shutil.which("npm")
+        if npm:
+            prefix = _run([npm, "prefix", "-g"], timeout=20).stdout.strip()
+            if prefix:
+                paths.append(Path(prefix) / "bin" / b)
+    elif engine == "claude":
         paths += [HOME / ".local/bin/claude", HOME / ".claude/local/claude", "/opt/homebrew/bin/claude", "/usr/local/bin/claude"]
     else:   # ChatGPT / Codex 桌面版自带的 codex 往往比命令行装的新
         paths += [HOME / ".local/bin/codex", "/opt/homebrew/bin/codex", "/usr/local/bin/codex",
@@ -66,6 +79,13 @@ def version_text(path):
 
 def install(engine, say=print):
     """安装最新版，成功返回路径。"""
+    if engine in NPM_PKG:
+        if not shutil.which("npm"):
+            say(f"{NAMES[engine]} 需要先安装 Node.js（自带 npm）：https://nodejs.org ，装好后重新运行安装命令")
+            return None
+        say(f"正在安装最新版 {NAMES[engine]} 命令行（npm）…")
+        subprocess.run(["npm", "install", "-g", NPM_PKG[engine]])
+        return find(engine)
     if engine == "claude":
         say("正在安装最新版 Claude Code（官方安装脚本）…")
         p = subprocess.run("curl -fsSL https://claude.ai/install.sh | bash", shell=True)
@@ -85,6 +105,10 @@ def install(engine, say=print):
 
 def upgrade(engine, path, say=print):
     """把已有的命令行工具升级到最新版。"""
+    if engine in NPM_PKG:
+        if shutil.which("npm"):
+            subprocess.run(["npm", "install", "-g", NPM_PKG[engine]])
+        return find(engine)
     if engine == "claude":
         subprocess.run([path, "update"])
     elif "node_modules" in os.path.realpath(path) and shutil.which("npm"):
@@ -115,7 +139,35 @@ def _install_codex_release(say):
 
 # ---------- 登录 ----------
 
+def deepseek_key():
+    if os.environ.get("DEEPSEEK_API_KEY"):
+        return os.environ["DEEPSEEK_API_KEY"]
+    try:
+        return json.loads(SECRETS.read_text()).get("DEEPSEEK_API_KEY", "")
+    except (OSError, json.JSONDecodeError):
+        return ""
+
+
+def save_deepseek_key(key):
+    SECRETS.parent.mkdir(parents=True, exist_ok=True)
+    data = {}
+    try:
+        data = json.loads(SECRETS.read_text())
+    except (OSError, json.JSONDecodeError):
+        pass
+    data["DEEPSEEK_API_KEY"] = key.strip()
+    SECRETS.write_text(json.dumps(data))
+    try:
+        os.chmod(SECRETS, 0o600)
+    except OSError:
+        pass
+
+
 def logged_in(engine, path):
+    if engine == "workbuddy":
+        return None              # CodeBuddy 没有登录状态命令，交给连接测试判断
+    if engine == "deepseek":
+        return bool(deepseek_key())
     if engine == "claude":
         p = _run([path, "auth", "status", "--json"], timeout=30)
         try:
@@ -127,6 +179,18 @@ def logged_in(engine, path):
 
 def login(engine, path):
     """在当前终端里拉起官方登录流程（会打开浏览器）。"""
+    if engine == "workbuddy":   # CodeBuddy 只能在交互界面里用 /login 登录
+        print("即将打开 CodeBuddy（WorkBuddy 同一账号、同一积分）：请输入 /login 完成登录，登录成功后输入 /exit 返回。", flush=True)
+        return subprocess.run([path]).returncode == 0
+    if engine == "deepseek":
+        import getpass
+        try:
+            key = getpass.getpass("请输入 DeepSeek API Key（输入时不显示，只保存在本机 ~/.purrge/secrets.json）：")
+        except (EOFError, OSError):
+            return False
+        if key.strip():
+            save_deepseek_key(key)
+        return bool(key.strip())
     cmd = [path, "auth", "login"] if engine == "claude" else [path, "login"]
     return subprocess.run(cmd).returncode == 0
 
@@ -147,7 +211,50 @@ class AIError(Exception):
     pass
 
 
+_DSH_CHECKED = {}
+
+
+def _dsh_tools_disabled(path):
+    """确认补丁真的关掉了全部工具插件（dsh 是预览版，配置格式变了就拒绝调用）。"""
+    if path not in _DSH_CHECKED:
+        p = _run([path, "--profile", "headless", "--patch", str(DSH_PATCH), "--dump-config"], timeout=60)
+        blocks = re.split(r"\n(?=- id: )", "\n" + p.stdout)
+        state = {}
+        for blk in blocks:
+            m = re.match(r"- id: (\S+)", blk.strip())
+            if m and m.group(1) in DSH_TOOL_PLUGINS:
+                state[m.group(1)] = state.get(m.group(1), True) and bool(re.search(r"^\s+disabled: true\s*$", blk, re.M))
+        _DSH_CHECKED[path] = p.returncode == 0 and set(state) == set(DSH_TOOL_PLUGINS) and all(state.values())
+    return _DSH_CHECKED[path]
+
+
 def _ask_once(engine, path, prompt, model, timeout):
+    if engine == "workbuddy":
+        cmd = [path, "-p", "--output-format", "json", "--tools", "", "--no-session-persistence"]
+        if model:
+            cmd += ["--model", model]
+        with tempfile.TemporaryDirectory() as tmp:
+            p = _run(cmd, input=prompt, timeout=timeout, cwd=tmp)
+        out = p.stdout.strip()
+        if p.returncode != 0 or not out or "Authentication required" in out:
+            raise AIError((p.stderr or p.stdout)[-400:] or "CodeBuddy 没有返回内容")
+        try:
+            d = json.loads(out)
+            return d.get("result") or d.get("text") or out if isinstance(d, dict) else out
+        except json.JSONDecodeError:
+            return out
+    if engine == "deepseek":
+        if not _dsh_tools_disabled(path):
+            raise AIError("DeepSeek Harness 的工具插件没能全部关闭，为安全起见不调用（可能是 dsh 版本变化）")
+        key = deepseek_key()
+        if not key:
+            raise AIError("缺少 DeepSeek API Key，请运行 purrge engine deepseek 重新设置")
+        env = dict(os.environ, DEEPSEEK_API_KEY=key)
+        with tempfile.TemporaryDirectory() as tmp:
+            p = _run([path, "--profile", "headless", "--patch", str(DSH_PATCH), "-"], input=prompt, timeout=timeout, cwd=tmp, env=env)
+        if p.returncode != 0 or not p.stdout.strip():
+            raise AIError((p.stderr or p.stdout)[-400:] or "DeepSeek Harness 没有返回内容")
+        return p.stdout
     if engine == "claude":
         cmd = [path, "-p", "--output-format", "json", "--max-turns", "1", "--tools", "", "--no-session-persistence"]
         if model:

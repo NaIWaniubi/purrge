@@ -11,7 +11,9 @@ from common import APP_DIR, CONFIG, DG_HOME, OFFICIAL, VERSION, disk_status, hum
 
 INSTALLED_APP = DG_HOME / "app"
 CLI_LINK = Path.home() / ".local/bin/purrge"
-SKILL_DIRS = {"claude": Path.home() / ".claude/skills/purrge", "codex": Path.home() / ".codex/skills/purrge"}
+SKILL_DIRS = {"claude": Path.home() / ".claude/skills/purrge", "codex": Path.home() / ".codex/skills/purrge",
+              "workbuddy": Path.home() / ".codebuddy/skills/purrge"}
+ENGINE_ORDER = ("claude", "codex", "workbuddy", "deepseek")   # 安装时的选项顺序；1、2 与旧版一致
 
 B, D, G, Y, R, X = "\033[1m", "\033[2m", "\033[32m", "\033[33m", "\033[31m", "\033[0m"
 
@@ -83,12 +85,14 @@ def choose_engine(args):
                 return e
         fail("没有可交互的终端，也没找到已登录的 Claude Code / Codex。请加参数：--engine claude 或 --engine codex")
     say(f"\n{B}Purrge 用哪个 AI 来判断哪些东西能清理？{X}")
-    for i, e in enumerate(("claude", "codex"), 1):
+    for i, e in enumerate(ENGINE_ORDER, 1):
         p = engines.find(e)
         state = f"{G}已安装 {engines.version_text(p)}{X}" if p else f"{D}未安装，会自动安装最新版{X}"
-        say(f"  {i}) {engines.NAMES[e]:<12} {state}")
-    ans = ask("请输入 1 或 2 [1]：", "1") or "1"
-    return "codex" if ans.strip() in ("2", "codex", "Codex") else "claude"
+        say(f"  {i}) {engines.NAMES[e]:<17} {state}")
+    ans = (ask("请输入 1～4 [1]：", "1") or "1").strip().lower()
+    if ans in ENGINE_ORDER:
+        return ans
+    return ENGINE_ORDER[int(ans) - 1] if ans.isdigit() and 1 <= int(ans) <= len(ENGINE_ORDER) else "claude"
 
 
 def ensure_engine(engine):
@@ -126,7 +130,7 @@ def connect(cfg, engine, path):
         cfg[f"{engine}Path"] = engines.upgrade(engine, path, say=lambda m: say(f"    {m}")) or path
         good, model, err = engines.test(cfg, log=lambda m: say(f"    {m}"))
         low = err.lower()
-    if not good and any(k in low for k in ("login", "log in", "auth", "401", "unauthorized")):
+    if not good and any(k in low for k in ("login", "log in", "auth", "401", "unauthorized", "api key")):
         warn(f"{name} 需要重新登录，正在打开登录页面…")
         engines.login(engine, cfg[f"{engine}Path"])
         good, model, err = engines.test(cfg, log=lambda m: say(f"    {m}"))
@@ -166,7 +170,7 @@ def link_cli():
 def install_skill(engine):
     """让 Claude Code / Codex 能听懂"帮我清理磁盘"：放一个说明文件，只调用 purrge 命令，不直接删文件。"""
     src = INSTALLED_APP / "integrations/SKILL.md"
-    if not src.exists() or not SKILL_DIRS[engine].parent.parent.exists():
+    if engine not in SKILL_DIRS or not src.exists() or not SKILL_DIRS[engine].parent.parent.exists():
         return False
     SKILL_DIRS[engine].mkdir(parents=True, exist_ok=True)
     shutil.copy2(src, SKILL_DIRS[engine] / "SKILL.md")
@@ -221,7 +225,7 @@ def cmd_install(args):
     say(f"\n{G}{B}安装完成！{X}常用命令：")
     say("  purrge scan        立即扫描，完成后自动打开审查页")
     say("  purrge status      查看剩余空间和监控状态")
-    say("  purrge engine      查看或切换 AI（purrge engine codex / claude）")
+    say("  purrge engine      查看或切换 AI（claude / codex / workbuddy / deepseek）")
     say("  purrge uninstall   关闭后台监控")
     if "--yes" not in args and (ask("\n现在就扫描一次吗？[y/N]：", "n") or "n").lower() in ("y", "yes", "是"):
         from dg import cmd_run
@@ -235,11 +239,11 @@ def cmd_engine(args):
         e = cfg.get("aiEngine")
         say(f"当前 AI：{engines.NAMES.get(e, '未设置（只用规则判断）')}"
             + (f"，模型 {cfg.get(e + 'Model') or '默认'}，路径 {cfg.get(e + 'Path')}" if e in engines.NAMES else ""))
-        say("切换：purrge engine claude  或  purrge engine codex")
+        say("切换：purrge engine claude | codex | workbuddy | deepseek")
         return
     engine = args[0].lower()
     if engine not in engines.NAMES:
-        fail("只支持 claude 或 codex")
+        fail("只支持 claude、codex、workbuddy、deepseek")
     apply_engine(cfg, engine)
     save_config(cfg)
     install_monitor(cfg)

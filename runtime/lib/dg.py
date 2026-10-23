@@ -2,10 +2,10 @@
 
 用法：purrge <命令>
   install                  安装：选择 AI、检查安装和登录、设阈值、开启后台监控
-                           （可加 --engine claude|codex --threshold 15 --yes）
+                           （可加 --engine claude|codex|workbuddy|deepseek --threshold 15 --yes）
   scan                     立即扫描，完成后自动打开审查页面
   status                   剩余空间、阈值、AI 和后台监控状态
-  engine [claude|codex]    查看或切换 AI
+  engine [名称]            查看或切换 AI：claude / codex / workbuddy / deepseek
   config [键 值]           查看或修改设置，如：config thresholdGB 20
   review                   重新打开最近一次的审查页面
   uninstall                关闭后台监控（--purge 同时删除设置和扫描记录）

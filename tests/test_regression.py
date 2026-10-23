@@ -52,6 +52,34 @@ open(out, "w").write("OK")
 }
 
 
+FAKE["codebuddy"] = r'''#!/usr/bin/env python3
+import json, os, sys
+args = sys.argv[1:]
+open(os.environ["FAKE_LOG"], "a").write(json.dumps({"bin": "codebuddy", "args": args}) + "\n")
+if "--version" in args:
+    print("2.173.0"); sys.exit(0)
+sys.stdin.read()
+print(json.dumps({"type": "result", "result": "OK"}))
+'''
+FAKE["dsh"] = r'''#!/usr/bin/env python3
+import json, os, sys
+args = sys.argv[1:]
+open(os.environ["FAKE_LOG"], "a").write(json.dumps({"bin": "dsh", "args": args, "key": os.environ.get("DEEPSEEK_API_KEY", "")}) + "\n")
+if "--version" in args:
+    print("0.2.1"); sys.exit(0)
+if "--dump-config" in args:
+    pp = args[args.index("--patch") + 1] if "--patch" in args else ""
+    if pp and not os.path.exists(pp):
+        sys.stderr.write("patch not found"); sys.exit(2)
+    off = bool(pp) and "disabled: true" in open(pp).read()
+    for t in ("tool-bash", "tool-pwsh", "tool-jobs", "tool-fs"):
+        print(f"- id: {t}\n  name: x" + ("\n  disabled: true" if off else ""))
+    sys.exit(0)
+sys.stdin.read()
+print("OK")
+'''
+
+
 class Env:
     """一个隔离的运行环境：临时 HOME、PURRGE_HOME、假的 AI 命令行。"""
 
@@ -240,6 +268,56 @@ class TestEngines(Base):
             print("@@" + json.dumps("AIError"))
         ''')
         self.assertEqual(r, "AIError")
+
+
+class TestNewEngines(Base):
+    def test_workbuddy_no_tools(self):
+        r = self.e.run(r'''
+        import engines, shutil
+        print("@@" + json.dumps(list(engines.test({"aiEngine": "workbuddy", "workbuddyPath": shutil.which("codebuddy")}, log=lambda *a: None))))
+        ''')
+        self.assertEqual(r, [True, "", ""])
+        a = [c["args"] for c in self.e.calls() if c["bin"] == "codebuddy" and "-p" in c["args"]][0]
+        self.assertEqual(a[a.index("--tools") + 1], "", "WorkBuddy 必须关掉全部工具")
+        self.assertIn("--no-session-persistence", a)
+
+    def test_deepseek_patch_and_key(self):
+        r = self.e.run(r'''
+        import engines, shutil
+        cfg = {"aiEngine": "deepseek", "deepseekPath": shutil.which("dsh")}
+        no_key = engines.test(cfg, log=lambda *a: None)
+        engines.save_deepseek_key("sk-test")
+        import os, stat
+        mode = oct(os.stat(engines.SECRETS).st_mode & 0o777)
+        print("@@" + json.dumps({"no_key": list(no_key), "ok": list(engines.test(cfg, log=lambda *a: None)), "mode": mode}))
+        ''')
+        self.assertFalse(r["no_key"][0])
+        self.assertEqual(r["ok"], [True, "", ""])
+        self.assertEqual(r["mode"], "0o600")
+        run = [c for c in self.e.calls() if c["bin"] == "dsh" and "-" in c["args"]][0]
+        self.assertIn("--patch", run["args"]); self.assertEqual(run["key"], "sk-test")
+
+    def test_deepseek_refuses_without_patch(self):
+        r = self.e.run(r'''
+        import engines, shutil
+        engines.DSH_PATCH = engines.Path("/nonexistent.yml")
+        engines.save_deepseek_key("sk-test")
+        print("@@" + json.dumps(list(engines.test({"aiEngine": "deepseek", "deepseekPath": shutil.which("dsh")}, log=lambda *a: None))))
+        ''')
+        self.assertFalse(r[0]); self.assertIn("工具", r[2])
+        self.assertFalse([c for c in self.e.calls() if c["bin"] == "dsh" and "-" in c["args"]], "工具没关掉时绝不能真正调用")
+
+    def test_installer_choice_compat(self):
+        r = self.e.run(r'''
+        import installer
+        res = {}
+        for ans in ("", "1", "2", "3", "4", "codex", "9"):
+            installer.ask = lambda prompt, default="", a=ans: a or default
+            installer.has_tty = lambda: True
+            res[ans or "回车"] = installer.choose_engine([])
+        print("@@" + json.dumps(res))
+        ''')
+        self.assertEqual(r, {"回车": "claude", "1": "claude", "2": "codex", "3": "workbuddy", "4": "deepseek", "codex": "codex", "9": "claude"})
 
 
 class TestConfig(Base):

@@ -27,7 +27,11 @@ DEFAULT_CONFIG = {
     "claudePath": "",           # 安装时自动探测
     "codexPath": "",
     "claudeModel": "",          # 留空用默认模型
-    "codexModel": "",           # 留空用默认模型；不可用时自动换成账号能用的模型
+    "codexModel": "",
+    "workbuddyPath": "",
+    "deepseekPath": "",
+    "workbuddyModel": "",       # 留空用 CodeBuddy 默认模型
+    "deepseekModel": "",           # 留空用默认模型；不可用时自动换成账号能用的模型
     "language": "zh",
 }
 
