@@ -133,10 +133,14 @@ def cmd_update(args):
             return 1
         new = _new_version(src)
         if not newer(new, old) and "--force" not in args:
-            _say(f"✓ 已经是最新版本 {old}，不需要更新。")
-            _sync_installed_app(src, args)      # Homebrew 已升级但后台还是旧程序时，顺手同步
-            return 0
-        _say(f"正在更新 Purrge：{old} → {new}")
+            if not _installed_stale(src):
+                _say(f"✓ 已经是最新版本 {old}，不需要更新。")
+                return 0
+            # Homebrew 已升级但后台运行的 ~/.purrge/app 还是旧程序：按正常更新流程同步（同样备份、自检、失败回滚）
+            old = _new_version(INSTALLED_APP)
+            _say(f"命令行已是 {new}，后台程序还是 {old}，正在同步…")
+        else:
+            _say(f"正在更新 Purrge：{old} → {new}")
         if INSTALLED_APP.exists():
             shutil.rmtree(BACKUP, ignore_errors=True)
             shutil.copytree(INSTALLED_APP, BACKUP)
@@ -169,13 +173,9 @@ def _replace_app(src):
         pass
 
 
-def _sync_installed_app(src, args):
-    """版本号相同但后台运行的 ~/.purrge/app 是旧文件（比如只做了 brew upgrade）：同步一次。"""
+def _installed_stale(src):
+    """版本号相同但后台运行的 ~/.purrge/app 是旧文件（比如只做了 brew upgrade）。"""
     try:
-        stale = INSTALLED_APP.exists() and _new_version(INSTALLED_APP) != _new_version(src)
+        return INSTALLED_APP.exists() and _new_version(INSTALLED_APP) != _new_version(src)
     except OSError:
-        stale = False
-    if stale:
-        _say("后台运行的程序还是旧文件，正在同步…")
-        _replace_app(src)
-        _post_update(sys.executable)
+        return False

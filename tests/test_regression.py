@@ -393,10 +393,10 @@ class TestUpdate(Base):
         import re
         return re.search(r'VERSION = "([^"]+)"', (runtime / "lib/common.py").read_text(encoding="utf-8")).group(1)
 
-    def update(self, src):
+    def update(self, src, cli=None):
         env = dict(os.environ, HOME=str(self.e.home), USERPROFILE=str(self.e.home), PURRGE_HOME=str(self.ph), PYTHONUTF8="1",
                    PURRGE_NO_UPDATE_CHECK="1", PURRGE_TEST_NO_MONITOR="1")
-        return subprocess.run([sys.executable, str(self.app / "lib/dg.py"), "update", "--from", str(src)], capture_output=True,
+        return subprocess.run([sys.executable, str((cli or self.app) / "lib/dg.py"), "update", "--from", str(src)], capture_output=True,
                               text=True, encoding="utf-8", env=env, timeout=180)
 
     def test_update_ok(self):
@@ -427,6 +427,18 @@ class TestUpdate(Base):
         self.assertEqual(p.returncode, 0)
         self.assertIn("已经是最新版本", p.stdout)
         self.assertFalse((self.ph / "app.bak").exists())
+
+    def test_sync_stale_app(self):
+        """只做了 brew upgrade：命令行（仓库里的新版）已是新版、后台程序还是 0.2.2 → update 要同步、留备份、保留设置。"""
+        before = (self.ph / "config.json").read_text()
+        p = self.update(ROOT, cli=ROOT / "runtime")
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertIn("后台程序还是 0.2.2", p.stdout)
+        self.assertEqual(self._ver(self.app), self._ver(ROOT / "runtime"))
+        self.assertEqual(self._ver(self.ph / "app.bak"), "0.2.2")
+        self.assertEqual((self.ph / "config.json").read_text(), before)
+        p = self.update(ROOT, cli=ROOT / "runtime")
+        self.assertIn("已经是最新版本", p.stdout)
 
     def test_version_compare(self):
         r = self.e.run(r'''
