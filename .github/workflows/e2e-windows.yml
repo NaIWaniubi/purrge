@@ -45,14 +45,18 @@ jobs:
           $p = "$env:LOCALAPPDATA\Microsoft\WindowsApps\purrge.cmd"
           $junk = "$env:TEMP\purrge-e2e-junk"; New-Item -ItemType Directory -Force $junk | Out-Null
           1..5 | ForEach-Object { [IO.File]::WriteAllBytes("$junk\f$_.bin", (New-Object byte[] (20MB))) }
-          $proc = Start-Process cmd -ArgumentList "/c `"$p`" run --no-open > `"$env:TEMP\run.log`" 2>&1" -PassThru -WindowStyle Hidden
+          $t0 = Get-Date
+          $proc = Start-Process -FilePath $p -ArgumentList "run", "--no-open" -PassThru -WindowStyle Hidden `
+                    -RedirectStandardOutput "$env:TEMP\run.out" -RedirectStandardError "$env:TEMP\run.err"
           $url = $null
           for ($i = 0; $i -lt 120 -and -not $url; $i++) {
             Start-Sleep 5
             $f = Get-ChildItem "$env:USERPROFILE\.purrge\runs\*\review-url.txt" -ErrorAction SilentlyContinue | Select-Object -First 1
             if ($f) { $url = Get-Content $f.FullName -Raw }
+            if ($proc.HasExited -and -not $url) { break }
           }
-          Get-Content "$env:TEMP\run.log" -Encoding UTF8
+          "用时 $([int]((Get-Date) - $t0).TotalSeconds) 秒"
+          Get-Content "$env:TEMP\run.out", "$env:TEMP\run.err" -Encoding UTF8 -ErrorAction SilentlyContinue
           if (-not $url) { throw "扫描没有完成" }
           $token = ($url -split "token=")[1].Trim()
           $base = ($url -split "/\?")[0]
