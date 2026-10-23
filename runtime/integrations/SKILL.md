@@ -11,7 +11,7 @@ description: Purrge by RabbittuX，macOS 磁盘清理工具。用户说"磁盘�
 | 清理磁盘 / 空间不够了 | `scan`（后台扫描，完成后自动在浏览器打开审查页面，约 1～2 分钟） |
 | 还剩多少空间 / 提醒开着没 | `status` |
 | 改阈值、检查频率、删除方式 | `config thresholdGB 20`、`config intervalMinutes 60`、`config optionalAction trash` 或 `delete` |
-| 换用 Claude Code / Codex 判断 | `engine claude` 或 `engine codex`（需要在终端里交互，请让用户自己运行） |
+| 换用 Claude Code / Codex 判断 | `engine claude` / `codex` / `workbuddy` / `deepseek`（需要在终端里交互，请让用户自己运行） |
 | 关掉提醒 / 卸载 | `uninstall`（`--purge` 连设置和记录一起删） |
 
 ## 规则
@@ -19,4 +19,4 @@ description: Purrge by RabbittuX，macOS 磁盘清理工具。用户说"磁盘�
 - 用户问"这个能不能删"时，可以读 `~/.purrge/runs/<最新目录>/review.json` 里对应项的 `tier` 和 `reason` 来解释。
 - 如果 `~/.purrge/config.json` 不存在，说明还没安装，请让用户在终端运行：
   `curl -fsSL https://raw.githubusercontent.com/RabbittuX/purrge/master/install.sh | bash`
-- 只支持 macOS。
+- 支持 macOS 和 Windows（Windows 为测试版；安装命令：PowerShell 执行 `irm https://raw.githubusercontent.com/RabbittuX/purrge/master/install.ps1 | iex`）。

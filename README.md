@@ -4,13 +4,13 @@
 
 # Purrge
 
-**基于 AI 的 macOS 磁盘空间管理工具：低空间预警、智能识别可清理项、经用户审批后执行清理。**
+**基于 AI 的磁盘空间管理工具（macOS / Windows）：低空间预警、智能识别可清理项、经用户审批后执行清理。**
 
 <sub>名称取自 purr（猫咪呼噜）与 purge（清除）· by RabbittuX</sub>
 
 <br>
 
-<img src="https://img.shields.io/badge/macOS-only-1c1b22?style=flat-square&logo=apple&logoColor=white" alt="macOS"> <img src="https://img.shields.io/badge/AI-Claude_Code_%7C_Codex-f2a33a?style=flat-square" alt="AI：Claude Code 或 Codex"> <img src="https://img.shields.io/badge/License-PolyForm_Noncommercial-e5484d?style=flat-square" alt="License">
+<img src="https://img.shields.io/badge/macOS%20%7C%20Windows-1c1b22?style=flat-square" alt="macOS | Windows"> <img src="https://img.shields.io/badge/AI-Claude_Code_%7C_Codex_%7C_WorkBuddy_%7C_DeepSeek-f2a33a?style=flat-square" alt="AI 引擎"> <img src="https://img.shields.io/badge/License-PolyForm_Noncommercial-e5484d?style=flat-square" alt="License">
 
 <br>
 
@@ -115,6 +115,27 @@ bash install.sh --engine codex --threshold 20 --yes
 ```
 
 </details>
+
+### Windows（测试版）
+
+在 PowerShell 中执行：
+
+```powershell
+irm https://raw.githubusercontent.com/RabbittuX/purrge/master/install.ps1 | iex
+```
+
+需要 Python 3.8 以上。后台检查使用「任务计划程序」，清理时「需要你决定」的项目移到回收站。
+
+### 支持的 AI 引擎
+
+| 引擎 | 调用方式 | 说明 |
+|---|---|---|
+| Claude Code | `claude -p --tools ""` | 关闭全部工具 |
+| Codex | `codex exec --sandbox read-only` | 只读沙箱 |
+| WorkBuddy | CodeBuddy 命令行 `codebuddy -p --tools ""` | 与 WorkBuddy 同一账号、同一积分；首次需在 CodeBuddy 中 `/login` |
+| DeepSeek Harness | `dsh --profile headless` + 关工具补丁 | 需要 DeepSeek API Key（仅保存在本机）；补丁未生效时拒绝调用 |
+
+切换：`purrge engine claude | codex | workbuddy | deepseek`。
 
 ## 🐾 使用方法
 

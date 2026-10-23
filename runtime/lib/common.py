@@ -6,7 +6,7 @@ import subprocess
 import time
 from pathlib import Path
 
-VERSION = "0.2.2"
+VERSION = "0.3.0-beta"
 OFFICIAL = "GitHub RabbittuX/purrge"     # 唯一官方来源
 
 HOME = Path.home()
