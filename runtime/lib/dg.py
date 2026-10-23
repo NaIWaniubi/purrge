@@ -1,4 +1,4 @@
-"""Purrge by RabbittuX：macOS 磁盘清理，AI（Claude Code 或 Codex）判断，你确认后才清理。
+"""Purrge by RabbittuX：macOS / Windows 磁盘清理，AI（Claude Code、Codex、WorkBuddy 或 DeepSeek Harness）判断，你确认后才清理。
 
 用法：purrge <命令>
   install                  安装：选择 AI、检查安装和登录、设阈值、开启后台监控

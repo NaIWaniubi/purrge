@@ -440,6 +440,19 @@ class TestUpdate(Base):
         p = self.update(ROOT, cli=ROOT / "runtime")
         self.assertIn("已经是最新版本", p.stdout)
 
+    def test_never_downgrade(self):
+        """下载到的代码比已装的旧（比如 master 还没发布新版）：不能把后台程序降级。"""
+        import shutil
+        old = Path(self.e.tmp.name) / "old"
+        shutil.copytree(ROOT, old, ignore=shutil.ignore_patterns(".git", "__pycache__"))
+        self._set_version(old / "runtime", "0.1.0")
+        self._set_version(self.app, self._ver(ROOT / "runtime"))
+        p = self.update(old, cli=ROOT / "runtime")
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertIn("已经是最新版本", p.stdout)
+        self.assertEqual(self._ver(self.app), self._ver(ROOT / "runtime"))
+        self.assertFalse((self.ph / "app.bak").exists())
+
     def test_version_compare(self):
         r = self.e.run(r'''
         import update

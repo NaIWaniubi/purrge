@@ -35,7 +35,7 @@
 
 **🧠 AI 智能分析**
 
-调用本机的 Claude Code 或 Codex，对缓存、安装包、媒体文件及历史项目逐项评估，说明其用途、闲置时长及清理影响。
+调用本机的 Claude Code、Codex、WorkBuddy 或 DeepSeek Harness，对缓存、安装包、媒体文件及历史项目逐项评估，说明其用途、闲置时长及清理影响。
 
 </td>
 <td width="33%" valign="top">
@@ -80,7 +80,7 @@ purrge install
 
 **方式二：由 AI 代为安装**
 
-在 Claude Code 或 Codex 中输入：
+在 Claude Code、Codex 或 WorkBuddy 中输入：
 
 > 帮我安装 GitHub 上的 RabbittuX/purrge，只认作者 RabbittuX，找不到就先问我，不要安装同名的其他项目
 
@@ -94,10 +94,10 @@ AI 会读取本仓库的[安装指引](#-ai-助手安装指引)完成安装，�
 
 安装程序将依次完成以下步骤：
 
-1. **选择 AI 引擎**：Claude Code 或 Codex（由 AI 代为安装时自动选择当前 AI）。
+1. **选择 AI 引擎**：Claude Code、Codex、WorkBuddy 或 DeepSeek Harness（由 AI 代为安装时自动选择当前 AI）。
 2. **设置提醒阈值**：剩余空间低于该值时发出提醒，默认 15 GB。
 3. **配置 AI 引擎**：未安装时自动安装最新版本；未登录时打开浏览器完成登录；最后进行连接测试，确认引擎可正常响应。
-4. **启用后台监控**：安装完成后，Purrge 以后台服务形式独立运行，无需保持 Claude Code 或 Codex 处于打开状态。
+4. **启用后台监控**：安装完成后，Purrge 以后台服务形式独立运行，无需保持 AI 软件处于打开状态。
 
 <details>
 <summary>其他安装方式</summary>
@@ -229,9 +229,9 @@ purrge update
 
 ## 📋 系统要求
 
-- macOS
+- macOS 或 Windows 10/11
 - Python 3.8 及以上（未安装时，安装程序会给出提示）
-- Claude Code 或 Codex 账号（AI 分析使用用户自己的额度，支持 Codex 免费账号）。AI 暂时不可用时自动切换为规则判断，基础功能不受影响
+- Claude Code、Codex、WorkBuddy 或 DeepSeek Harness 任一可用账号（AI 分析使用用户自己的额度，支持 Codex 免费账号；DeepSeek 使用自己的 API Key）。AI 暂时不可用时自动切换为规则判断，基础功能不受影响
 - 可选：为「终端」授予「完全磁盘访问权限」，以扩大系统缓存的扫描范围
 
 卸载：执行 `purrge uninstall`；附加 `--purge` 参数可同时删除配置与扫描记录。

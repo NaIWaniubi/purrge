@@ -94,7 +94,7 @@ def _fetch(args, tmp):
         brew, prefix = b
         _say("检测到 Homebrew 安装，正在 brew upgrade…")
         subprocess.run([brew, "update", "--quiet"], capture_output=True)
-        subprocess.run([brew, "upgrade", "rabbittux/tap/purrge"])
+        subprocess.run([brew, "upgrade", "rabbittux/tap/purrge"], env=dict(os.environ, HOMEBREW_NO_AUTO_UPDATE="1"))  # 上一步已 update 过
         return prefix / "libexec" / "runtime"
     _say("正在从 GitHub 下载最新版…")
     tgz = Path(tmp) / "purrge.tar.gz"
@@ -174,8 +174,8 @@ def _replace_app(src):
 
 
 def _installed_stale(src):
-    """版本号相同但后台运行的 ~/.purrge/app 是旧文件（比如只做了 brew upgrade）。"""
+    """新代码比后台运行的 ~/.purrge/app 新（比如只做了 brew upgrade）。"""
     try:
-        return INSTALLED_APP.exists() and _new_version(INSTALLED_APP) != _new_version(src)
+        return INSTALLED_APP.exists() and newer(_new_version(src), _new_version(INSTALLED_APP))   # 只升不降
     except OSError:
         return False
