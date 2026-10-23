@@ -34,8 +34,10 @@ jobs:
           $st = (& $p status | Out-String | ConvertFrom-Json)
           if ($st.monitor -ne "运行中") { throw "后台任务没有注册" }
           schtasks /query /fo LIST | Select-String -Pattern "purrge" -SimpleMatch
-          $cb = Get-ChildItem "$env:USERPROFILE\.purrge\node\codebuddy.cmd" -ErrorAction SilentlyContinue
-          if (-not $cb) { throw "WorkBuddy 命令行没有装到 Purrge 自带的 Node 里" }
+          # 机器上已有 Node.js 时用已有的（装到 %APPDATA%\npm），没有时用 Purrge 自带的（~/.purrge/node）
+          $cb = Get-ChildItem "$env:USERPROFILE\.purrge\node\codebuddy.cmd", "$env:APPDATA\npm\codebuddy.cmd" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $cb) { throw "没有找到 WorkBuddy 命令行" }
+          "WorkBuddy 命令行：$($cb.FullName)"
           & $cb.FullName --version
           Get-Content "$env:USERPROFILE\.purrge\config.json"
       - name: 扫描 + 审查页面 + 清理进回收站
