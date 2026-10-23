@@ -213,10 +213,10 @@ def apply_engine(cfg, engine):
 
 def cmd_install(args):
     from dg import has_full_disk_access, install_monitor, migrate_from_disk_guard
-    if sys.platform != "darwin":
-        fail("Purrge 目前只支持 macOS")
+    if sys.platform not in ("darwin", "win32"):
+        fail("Purrge 目前只支持 macOS 和 Windows")
     say(f"\n{B}🐾 Purrge {VERSION} by RabbittuX{X}  {D}官方来源：{OFFICIAL}{X}")
-    say(f"{D}基于 AI 的 macOS 磁盘空间管理工具：低空间预警、智能识别可清理项、经用户审批后执行清理{X}")
+    say(f"{D}基于 AI 的 {"Windows" if WIN else "macOS"} 磁盘空间管理工具：低空间预警、智能识别可清理项、经用户审批后执行清理{X}")
     migrate_from_disk_guard()
     cfg = load_config()
     engine = choose_engine(args)
@@ -243,7 +243,8 @@ def cmd_install(args):
     install_monitor(cfg)
     ok(f"每 {cfg['intervalMinutes']} 分钟检查一次（只看剩余空间，不调用 AI）")
     on_path = link_cli()
-    ok("命令行工具：purrge" + ("" if on_path else f"  {D}（~/.local/bin 不在 PATH 里，可用完整路径 {CLI_LINK}）{X}"))
+    hint = "重新打开一个 PowerShell 窗口后可用" if WIN else f"~/.local/bin 不在 PATH 里，可用完整路径 {CLI_LINK}"
+    ok("命令行工具：purrge" + ("" if on_path else f"  {D}（{hint}）{X}"))
     if install_skill(engine):
         ok(f"已教会 {engines.NAMES[engine]}：直接说「帮我清理磁盘」也能用")
     if has_full_disk_access() is False:
