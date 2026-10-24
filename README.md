@@ -147,7 +147,7 @@ purrge update
 
 自动识别安装方式（Homebrew / 脚本），先备份再更新，设置、扫描记录和 AI 引擎都保留；新版本自检不通过会自动换回旧版本。有新版本时，`purrge status` 和审查页会提示。
 
-> 从 0.2.x 升级：旧版本还没有 `purrge update`，需要手动更新一次——Homebrew 用户运行 `brew upgrade rabbittux/tap/purrge && purrge install`，脚本安装的用户重新运行一遍安装命令。之后就可以用 `purrge update` 了。
+> 从 0.2.x 升级：旧版本还没有 `purrge update`，需要手动更新一次——Homebrew 用户运行 `brew upgrade rabbittux/tap/purrge && purrge update`（设置和 AI 引擎都保留），脚本安装的用户重新运行一遍安装命令。之后就可以用 `purrge update` 了。
 
 ## 🐾 使用方法
 
@@ -237,7 +237,7 @@ purrge update
 - Claude Code、Codex、WorkBuddy 或 DeepSeek Harness 任一可用账号（AI 分析使用用户自己的额度，支持 Codex 免费账号；DeepSeek 使用自己的 API Key）。AI 暂时不可用时自动切换为规则判断，基础功能不受影响
 - 可选：为「终端」授予「完全磁盘访问权限」，以扩大系统缓存的扫描范围
 
-卸载：执行 `purrge uninstall`；附加 `--purge` 参数可同时删除配置与扫描记录。
+卸载：执行 `purrge uninstall`（关闭后台监控、移除 `purrge` 命令和 AI 里的说明文件）；附加 `--purge` 参数可同时删除配置、扫描记录以及 Purrge 自带的 Node.js。通过 Homebrew 安装的，再运行 `brew uninstall purrge`。自动安装的 Python 不会被删除，如不再需要可在系统中自行卸载。
 
 ## 📄 许可证
 
