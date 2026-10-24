@@ -1,7 +1,7 @@
 # Purrge Windows 安装脚本：
 #   [Net.ServicePointManager]::SecurityProtocol = 'Tls12'; irm https://raw.githubusercontent.com/RabbittuX/purrge/master/install.ps1 | iex
 #   或者 git clone 后运行：pwsh -File install.ps1（PowerShell 7；旧版 Windows PowerShell 读本地文件可能乱码，请用上面的 irm 方式）
-# 环境变量：PURRGE_BRANCH 下载指定分支（测试用），PURRGE_YES=1 全部默认同意
+# 环境变量：PURRGE_BRANCH 下载指定分支（测试用），PURRGE_YES=1 全部默认同意，PURRGE_SRC 使用本地代码目录（PowerShell 模块用）
 # 可选参数（本地运行时）：--engine claude|codex|workbuddy|deepseek  --threshold 15  --yes
 $ErrorActionPreference = "Stop"
 # 老版本 Windows / Windows Server 的 PowerShell 5.1 默认不用 TLS 1.2，连 GitHub、python.org 会报"基础连接已经关闭"
@@ -92,7 +92,7 @@ if (-not $py) {
   }
   Write-Host "✓ Python 已就绪：$(& $py --version 2>&1)"
 }
-$src = if ($PSScriptRoot) { $PSScriptRoot } else { "" }
+$src = if ($env:PURRGE_SRC) { $env:PURRGE_SRC } elseif ($PSScriptRoot) { $PSScriptRoot } else { "" }   # PURRGE_SRC：PowerShell 模块自带完整代码，不用再下载
 if (-not $src -or -not (Test-Path (Join-Path $src "runtime\lib\dg.py"))) {
   $tmp = Join-Path $env:TEMP ("purrge-" + [guid]::NewGuid())
   New-Item -ItemType Directory -Path $tmp | Out-Null

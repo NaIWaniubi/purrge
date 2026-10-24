@@ -1,0 +1,26 @@
+name: publish-psgallery
+# 发布 GitHub Release 时，自动把同版本的 PowerShell 模块发布到 PowerShell Gallery。
+# 需要在仓库 Settings → Secrets 里设置 PSGALLERY_API_KEY（用 gh secret set PSGALLERY_API_KEY）；没设置时跳过，不报错。
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+jobs:
+  publish:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 打包并发布
+        shell: pwsh
+        env:
+          PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
+        run: |
+          if (-not $env:PSGALLERY_API_KEY) { "未设置 PSGALLERY_API_KEY，跳过发布"; exit 0 }
+          python packaging/powershell/build.py "$env:RUNNER_TEMP\pkg\Purrge"
+          $m = Test-ModuleManifest "$env:RUNNER_TEMP\pkg\Purrge\Purrge.psd1"
+          $ver = $m.Version.ToString()
+          if (Find-PSResource -Name Purrge -Repository PSGallery -Version $ver -Prerelease -ErrorAction SilentlyContinue) {
+            "PowerShell Gallery 上已有 Purrge $ver，跳过"; exit 0
+          }
+          Publish-PSResource -Path "$env:RUNNER_TEMP\pkg\Purrge" -Repository PSGallery -ApiKey $env:PSGALLERY_API_KEY
+          "已发布 Purrge $ver 到 PowerShell Gallery"

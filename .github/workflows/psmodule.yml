@@ -1,0 +1,59 @@
+name: psmodule
+# PowerShell 模块（PowerShell Gallery 安装方式）：打包 → 发布到本地测试仓库 → 按用户方式 Install-Module → Install-Purrge → 卸载
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  module:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-2025]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: 打包模块
+        shell: pwsh
+        run: |
+          python packaging/powershell/build.py "$env:RUNNER_TEMP\pkg\Purrge"
+          Test-ModuleManifest "$env:RUNNER_TEMP\pkg\Purrge\Purrge.psd1" | Format-List Name, Version, ExportedFunctions, PowerShellVersion
+      - name: 发布到本地测试仓库（代替 PowerShell Gallery）
+        shell: pwsh
+        run: |
+          $repo = "$env:RUNNER_TEMP\localrepo"; New-Item -ItemType Directory -Force $repo | Out-Null
+          Register-PSResourceRepository -Name LocalTest -Uri $repo -Trusted
+          Publish-PSResource -Path "$env:RUNNER_TEMP\pkg\Purrge" -Repository LocalTest
+          Get-ChildItem $repo | Select-Object Name, Length
+      - name: 用户方式安装（Windows PowerShell 5.1：Install-Module → Install-Purrge）
+        shell: powershell
+        run: |
+          Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser | Out-Null
+          Register-PSRepository -Name LocalTest -SourceLocation "$env:RUNNER_TEMP\localrepo" -InstallationPolicy Trusted
+          Install-Module Purrge -Repository LocalTest -Scope CurrentUser -Force
+          Get-Command Install-Purrge | Format-List Name, Source, Version
+          Install-Purrge --engine workbuddy --threshold 15 --yes *>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP\install.log"
+      - name: 检查安装结果（没有从 GitHub 下载 Purrge、命令和后台任务都在）
+        shell: pwsh
+        run: |
+          $log = Get-Content "$env:RUNNER_TEMP\install.log" -Raw
+          if ($log -match "正在下载 Purrge") { throw "模块里已带完整代码，不应再从 GitHub 下载" }
+          if ($log -notmatch "安装完成") { throw "安装没有完成" }
+          $p = "$env:LOCALAPPDATA\Microsoft\WindowsApps\purrge.cmd"
+          & $p version
+          $st = & $p status | Out-String | ConvertFrom-Json
+          if ($st.monitor -ne "运行中") { throw "后台任务没有注册" }
+          $st
+      - name: 卸载（purrge uninstall --purge + Uninstall-Module）
+        shell: powershell
+        run: |
+          & "$env:LOCALAPPDATA\Microsoft\WindowsApps\purrge.cmd" uninstall --purge
+          Uninstall-Module Purrge -AllVersions -Force
+          Start-Sleep 5
+          $left = @()
+          if (Get-Module Purrge -ListAvailable) { $left += "module" }
+          if (Test-Path "$env:LOCALAPPDATA\Microsoft\WindowsApps\purrge.cmd") { $left += "purrge.cmd" }
+          if (Test-Path "$env:USERPROFILE\.purrge") { $left += ".purrge" }
+          if ($left) { throw ("left behind: " + ($left -join ", ")) }
+          "clean"
+          exit 0
