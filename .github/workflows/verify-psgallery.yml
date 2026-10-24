@@ -1,0 +1,30 @@
+name: verify-psgallery
+# 发布后手动运行：在全新的 Windows 上从真正的 PowerShell Gallery 安装（Install-Module → Install-Purrge），再卸载干净
+on:
+  workflow_dispatch:
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-2025]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Install-Module Purrge（PowerShell Gallery）→ Install-Purrge
+        shell: powershell
+        run: |
+          Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser | Out-Null
+          Install-Module Purrge -Scope CurrentUser -Force
+          Get-InstalledModule Purrge | Format-List Name, Version, Author, Repository
+          Install-Purrge --engine workbuddy --threshold 15 --yes
+      - name: 检查并卸载
+        shell: pwsh
+        run: |
+          $p = "$env:LOCALAPPDATA\Microsoft\WindowsApps\purrge.cmd"
+          & $p version
+          $st = & $p status | Out-String | ConvertFrom-Json
+          if ($st.monitor -ne "运行中") { throw "后台任务没有注册" }
+          & $p uninstall --purge
+          Uninstall-Module Purrge -AllVersions -Force
+          "ok"
+          exit 0

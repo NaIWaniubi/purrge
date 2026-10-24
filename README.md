@@ -20,6 +20,10 @@
 
 <br>
 
+## 🆕 v0.3.1 更新内容
+
+- **Windows 两行命令安装，不需要网址**：Purrge 已发布到微软官方的 PowerShell Gallery，`Install-Module Purrge` + `Install-Purrge` 即可安装；模块自带完整代码，安装时不再访问 GitHub。
+
 ## 🆕 v0.3.0 更新内容
 
 - **支持 Windows**：Windows 10 / 11 / Windows Server 均可使用，后台检查用「任务计划程序」，清理的文件进回收站，提醒窗和系统通知都是原生样式。
@@ -85,6 +89,7 @@
 > **请认准官方来源。** Purrge 只有两个官方仓库：`RabbittuX/purrge` 和 `RabbittuX/homebrew-tap`（作者名 RabbittuX，两个 t、结尾大写 X）。
 > - GitHub 上另有多个同名的 purrge 项目，与本项目无关，其中部分自称"清理垃圾"的项目来源不明，请勿安装。
 > - Homebrew 中的 `purge`（单个 r）是另一款软件；请使用完整名称 `rabbittux/tap/purrge`。
+> - PowerShell Gallery 中的官方模块名为 `Purrge`（作者 RabbittuX），页面地址 powershellgallery.com/packages/Purrge。
 > - 安装开始时会显示「Purrge 版本号 by RabbittuX　官方来源：GitHub RabbittuX/purrge」，可据此核对；也可随时运行 `purrge version` 查看。
 
 ### macOS
@@ -124,16 +129,23 @@ bash install.sh --engine codex --threshold 20 --yes
 打开「Windows PowerShell」（不需要管理员权限），执行：
 
 ```powershell
+Install-Module Purrge -Scope CurrentUser
+Install-Purrge
+```
+
+- 第一次使用 `Install-Module` 时，Windows 会询问是否安装 NuGet 组件、是否信任 PSGallery 仓库，输入 `Y` 回车即可。
+- 没有 Python 时会询问并自动安装（只装给当前用户）。安装完成后**重新打开一个 PowerShell 窗口**即可使用 `purrge` 命令。
+- 模块里自带完整代码，安装过程不访问 GitHub。
+
+<details>
+<summary>其他安装方式（一行脚本 / 国内网络备用命令）</summary>
+
+```powershell
+# 一行脚本（从 GitHub 下载）
 [Net.ServicePointManager]::SecurityProtocol = 'Tls12'; irm https://raw.githubusercontent.com/RabbittuX/purrge/master/install.ps1 | iex
 ```
 
-- 命令开头的 `SecurityProtocol` 用于让较老的 Windows / Windows Server 使用 TLS 1.2，否则会报「基础连接已经关闭」。
-- 没有 Python 时会询问并自动安装（只装给当前用户）。安装完成后**重新打开一个 PowerShell 窗口**即可使用 `purrge` 命令。
-
-<details>
-<summary>报错「基础连接已经关闭」或「连接被重置」（国内网络常见）</summary>
-
-国内网络经常拦截 `raw.githubusercontent.com`。改用下面这条命令，从可以访问的 `codeload.github.com` 下载完整代码后安装：
+上面这条报错「基础连接已经关闭」或「连接被重置」时（国内网络经常拦截 `raw.githubusercontent.com`），改用下面这条，从 `codeload.github.com` 下载完整代码后安装：
 
 ```powershell
 [Net.ServicePointManager]::SecurityProtocol='Tls12'; $ProgressPreference='SilentlyContinue'; $t="$env:TEMP\purrge-dl"; Remove-Item $t -Recurse -Force -ErrorAction SilentlyContinue; New-Item -ItemType Directory $t | Out-Null; Invoke-WebRequest https://codeload.github.com/RabbittuX/purrge/zip/refs/heads/master -OutFile "$t\p.zip" -UseBasicParsing; Expand-Archive "$t\p.zip" $t; iex (Get-Content -Raw -Encoding UTF8 (Get-ChildItem $t -Recurse -Filter install.ps1 | Select-Object -First 1).FullName)
@@ -204,6 +216,7 @@ purrge uninstall --purge   # 同时删除设置、扫描记录以及 Purrge 自�
 ```
 
 - **Homebrew 安装的**：再运行 `brew uninstall purrge`。
+- **通过 PowerShell Gallery 安装的**：再运行 `Uninstall-Module Purrge`。
 - **Windows**：在 PowerShell 中执行上面的命令即可，后台的「任务计划程序」任务、通知登记会一并清除。
 - 安装时自动装上的 Python、Node.js（系统里原本没有的）不会被删除；不再需要时可在系统中自行卸载。
 
