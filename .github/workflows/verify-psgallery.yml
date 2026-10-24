@@ -25,6 +25,10 @@ jobs:
           $st = & $p status | Out-String | ConvertFrom-Json
           if ($st.monitor -ne "运行中") { throw "后台任务没有注册" }
           & $p uninstall --purge
-          Uninstall-Module Purrge -AllVersions -Force
-          "ok"
           exit 0
+      - name: Uninstall-Module（和安装时同一个 Windows PowerShell）
+        shell: powershell
+        run: |
+          Uninstall-Module Purrge -AllVersions -Force
+          if (Get-Module Purrge -ListAvailable) { throw "module still installed" }
+          "ok"
