@@ -1,5 +1,6 @@
 """AI 引擎：Claude Code、Codex、WorkBuddy（CodeBuddy 命令行）、DeepSeek Harness（dsh）。负责找到命令行工具、安装最新版、检查/拉起登录、调用 AI。
 Purrge 本身不依赖任何一家，引擎不可用时 classify.py 会退回规则判断。"""
+import contextlib
 import json
 import os
 import platform
@@ -22,6 +23,16 @@ DSH_PATCH = Path(__file__).resolve().parent.parent / "rules" / "dsh-notools.yml"
 DSH_TOOL_PLUGINS = ("tool-bash", "tool-pwsh", "tool-jobs", "tool-fs")
 SECRETS = Path(os.environ.get("PURRGE_HOME", HOME / ".purrge")) / "secrets.json"   # 只存 DeepSeek API Key，权限 600
 MODEL_ERRORS = ("not supported", "requires a newer version", "model_not_found", "does not exist", "invalid model")
+
+
+@contextlib.contextmanager
+def _tmpdir():
+    """临时工作目录。AI 命令行（如 CodeBuddy）可能留下后台进程占着目录，Windows 上会删不掉：删不掉就留给系统清理，不能因此报错。"""
+    d = tempfile.mkdtemp(prefix="purrge-")
+    try:
+        yield d
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
 
 
 def _run(cmd, **kw):
@@ -154,7 +165,7 @@ def _install_codex_release(say):
     arch = "aarch64" if platform.machine() == "arm64" else "x86_64"
     url = f"https://github.com/openai/codex/releases/latest/download/codex-{arch}-apple-darwin.tar.gz"
     dest = HOME / ".local/bin/codex"
-    with tempfile.TemporaryDirectory() as tmp:
+    with _tmpdir() as tmp:
         tgz = Path(tmp) / "codex.tar.gz"
         urllib.request.urlretrieve(url, tgz)
         with tarfile.open(tgz) as t:
@@ -263,7 +274,7 @@ def _ask_once(engine, path, prompt, model, timeout):
         cmd = [path, "-p", "--output-format", "text", "--tools", "", "--no-session-persistence"]
         if model:
             cmd += ["--model", model]
-        with tempfile.TemporaryDirectory() as tmp:
+        with _tmpdir() as tmp:
             p = _run(cmd, input=prompt, timeout=timeout, cwd=tmp)
         out = p.stdout.strip()
         if p.returncode != 0 or not out or "Authentication required" in out:
@@ -276,7 +287,7 @@ def _ask_once(engine, path, prompt, model, timeout):
         if not key:
             raise AIError("缺少 DeepSeek API Key，请运行 purrge engine deepseek 重新设置")
         env = dict(os.environ, DEEPSEEK_API_KEY=key)
-        with tempfile.TemporaryDirectory() as tmp:
+        with _tmpdir() as tmp:
             p = _run([path, "--profile", "headless", "--patch", str(DSH_PATCH), "-"], input=prompt, timeout=timeout, cwd=tmp, env=env)
         if p.returncode != 0 or not p.stdout.strip():
             raise AIError((p.stderr or p.stdout)[-400:] or "DeepSeek Harness 没有返回内容")
@@ -293,7 +304,7 @@ def _ask_once(engine, path, prompt, model, timeout):
         except json.JSONDecodeError:
             return p.stdout
     # Codex：只读沙箱、不留会话，在空目录里运行，避免读到别的项目说明
-    with tempfile.TemporaryDirectory() as tmp:
+    with _tmpdir() as tmp:
         out = Path(tmp) / "answer.txt"
         cmd = [path, "exec", "--skip-git-repo-check", "--sandbox", "read-only", "--ephemeral", "--color", "never",
                "-o", str(out), "-"]
