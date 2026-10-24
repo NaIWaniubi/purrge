@@ -153,14 +153,46 @@ def is_package(path):
     return False
 
 
+AUMID = "RabbittuX.Purrge"
+_ICON = Path(__file__).resolve().parents[2] / "assets" / "icon.png"
+_AUMID_KEY = "HKCU:\\Software\\Classes\\AppUserModelId\\" + AUMID
+
+
 def notify(title, text):
+    """Windows 10/11 原生通知：标题显示 Purrge 和猫咪图标；不支持时（老系统、通知被关）退回托盘气泡。"""
+    toast = (
+        f"$k = {_q(_AUMID_KEY)}; New-Item -Path $k -Force | Out-Null; "        # 登记应用身份（当前用户，无需管理员）
+        "New-ItemProperty -Path $k -Name DisplayName -Value 'Purrge' -PropertyType String -Force | Out-Null; "
+        f"New-ItemProperty -Path $k -Name IconUri -Value {_q(_ICON)} -PropertyType String -Force | Out-Null; "
+        "[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null; "
+        "[Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null; "
+        f"$t = [Security.SecurityElement]::Escape({_q(title)}); $b = [Security.SecurityElement]::Escape({_q(text)}); "
+        f"$i = ([Uri]{_q(_ICON)}).AbsoluteUri; "
+        "$x = New-Object Windows.Data.Xml.Dom.XmlDocument; "
+        "$x.LoadXml(\"<toast><visual><binding template='ToastGeneric'><text>$t</text><text>$b</text>"
+        "<image placement='appLogoOverride' src='$i'/></binding></visual></toast>\"); "
+        f"[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier({_q(AUMID)}).Show("
+        "[Windows.UI.Notifications.ToastNotification]::new($x))")
+    if _ps(toast, timeout=30).returncode == 0:
+        return "toast"
     _ps("Add-Type -AssemblyName System.Windows.Forms; $n = New-Object System.Windows.Forms.NotifyIcon; "
         "$n.Icon = [System.Drawing.SystemIcons]::Information; $n.Visible = $true; "
         f"$n.ShowBalloonTip(8000, {_q(title)}, {_q(text)}, 'Info'); Start-Sleep -Seconds 9; $n.Dispose()", timeout=20)
+    return "balloon"
 
 
-def show_alert(app_dir, free_txt, total_txt, th_txt, used_frac):
-    """提醒弹窗：「是」=帮我看看，「否」=等会儿再说。返回 scan / later。"""
+def show_alert(app_dir, free_txt, total_txt, th_txt, used_frac, snapshot=None):
+    """提醒弹窗（WPF 自绘：猫咪图标 + 用量条 + 「帮我看看 / 等会儿再说」，跟随深色模式）；
+    显示失败时退回系统对话框。返回 scan / later。snapshot：只把窗口画成 PNG（预览/CI 用）。"""
+    args = [f"主人，磁盘只剩 {free_txt} 了", f"已经低于你定的 {th_txt} 啦。要我帮你翻翻哪些能清掉吗？删哪些，你说了算。",
+            f"已用 {round(used_frac * 100)}%  ·  总容量 {total_txt}", str(used_frac),
+            str(Path(app_dir) / "assets" / "icon-256.png"), "帮我看看", "等会儿再说"] + ([str(snapshot)] if snapshot else [])
+    p = _run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-STA", "-File",
+              str(Path(app_dir) / "lib" / "plat" / "alert.ps1"), *args], timeout=3600)
+    if p.returncode == 0 and p.stdout.strip() in ("scan", "later"):
+        return p.stdout.strip()
+    if snapshot:
+        raise RuntimeError((p.stderr or p.stdout)[-800:])
     msg = (f"主人，磁盘只剩 {free_txt} 了，已经低于你定的 {th_txt} 啦。`n`n"
            f"已用 {round(used_frac * 100)}% · 总容量 {total_txt}`n`n要我帮你翻翻哪些能清掉吗？删哪些，你说了算。`n`n"
            "「是」= 帮我看看　「否」= 等会儿再说")
@@ -194,6 +226,7 @@ def install_monitor(label, python, script, interval_minutes, log_path, path_env)
 def uninstall_monitor(label):
     _run(["schtasks", "/Delete", "/F", "/TN", _task_name(label)])
     monitor_file(label).unlink(missing_ok=True)
+    _ps(f"Remove-Item -Path {_q(_AUMID_KEY)} -Recurse -Force -ErrorAction SilentlyContinue")   # 通知用的应用身份一并清掉
 
 
 def monitor_loaded(label):

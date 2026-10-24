@@ -95,6 +95,22 @@ def ask_user(free):
     return plat.show_alert(APP_DIR, human(free), human(total), th, 1 - free / total)
 
 
+def cmd_popup(args):
+    """预览弹窗（不需要空间真的不足）：先发一条通知，再弹提醒窗，不会触发扫描。
+    --notify 只发通知；--snapshot 图片.png 只把提醒窗画成图片（Windows，CI 检查样式用）。"""
+    free, total = disk_status()
+    if "--snapshot" in args:
+        out = args[args.index("--snapshot") + 1]
+        th = f"{load_config()['thresholdGB']:g} GB"
+        plat.show_alert(APP_DIR, human(free), human(total), th, 1 - free / total, snapshot=out)
+        print(out)
+        return
+    how = plat.notify("Purrge", "收到！正在帮你翻找能清理的东西，翻完会把清单拿给你看～")
+    print("通知：已发出" + (f"（{how}）" if how else ""))
+    if "--notify" not in args:
+        print("提醒窗：你选了「" + ("帮我看看" if ask_user(free) == "scan" else "等会儿再说") + "」（预览，不会开始扫描）")
+
+
 def cmd_check(args):
     cfg = load_config()
     free, _ = disk_status()
@@ -237,7 +253,7 @@ def main():
     from installer import cmd_engine, cmd_install
     cmds = {"install": cmd_install, "setup": cmd_setup, "scan": cmd_scan, "run": cmd_run, "check": cmd_check,
             "review": cmd_review, "config": cmd_config, "status": cmd_status, "engine": cmd_engine,
-            "uninstall": cmd_uninstall, "update": cmd_update, "_post_update": cmd_post_update}
+            "uninstall": cmd_uninstall, "update": cmd_update, "_post_update": cmd_post_update, "popup": cmd_popup}
     if len(sys.argv) > 1 and sys.argv[1] in ("version", "--version", "-v"):
         print(f"Purrge {VERSION} by RabbittuX（官方来源：{OFFICIAL}）")
         return

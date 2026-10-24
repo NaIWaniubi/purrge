@@ -72,3 +72,20 @@ jobs:
           }
           Invoke-RestMethod "$base/api/close" -Method Post -Headers @{ "X-DG-Token" = $token } | Out-Null
           Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+      - name: 弹窗样式截图（浅色 / 深色）+ 原生通知
+        shell: pwsh
+        run: |
+          $p = "$env:LOCALAPPDATA\Microsoft\WindowsApps\purrge.cmd"
+          $k = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
+          New-Item -Path $k -Force | Out-Null
+          Set-ItemProperty $k AppsUseLightTheme 1 -Type DWord
+          & $p popup --snapshot "$env:RUNNER_TEMP\alert-light.png"
+          Set-ItemProperty $k AppsUseLightTheme 0 -Type DWord
+          & $p popup --snapshot "$env:RUNNER_TEMP\alert-dark.png"
+          if (-not (Test-Path "$env:RUNNER_TEMP\alert-light.png") -or -not (Test-Path "$env:RUNNER_TEMP\alert-dark.png")) { throw "提醒窗没有画出来" }
+          & $p popup --notify
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: popup-${{ matrix.os }}
+          path: ${{ runner.temp }}/alert-*.png
