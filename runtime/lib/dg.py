@@ -221,6 +221,9 @@ def cmd_post_update(args):
     install_monitor(cfg)
     if cfg.get("aiEngine"):
         install_skill(cfg["aiEngine"])
+    from installer import WIN_CLI, link_cli
+    if sys.platform == "win32" and WIN_CLI.exists():   # 顺带刷新 Windows 的 purrge 命令（新版写法卸载时不报错）
+        link_cli()
     free, total = disk_status()
     assert total > 0 and 0 <= free <= total, "磁盘信息读取失败"
     assert (INSTALLED_APP / "web/review.html").is_file() and (INSTALLED_APP / "rules").is_dir(), "程序文件不完整"
