@@ -12,6 +12,7 @@ from common import APP_DIR, CONFIG, DG_HOME, OFFICIAL, VERSION, disk_status, hum
 
 INSTALLED_APP = DG_HOME / "app"
 CLI_LINK = Path.home() / ".local/bin/purrge"
+WIN_CLI = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData/Local")) / "Microsoft/WindowsApps/purrge.cmd"
 SKILL_DIRS = {"claude": Path.home() / ".claude/skills/purrge", "codex": Path.home() / ".codex/skills/purrge",
               "workbuddy": Path.home() / ".codebuddy/skills/purrge"}
 ENGINE_ORDER = ("claude", "codex", "workbuddy", "deepseek")   # 安装时的选项顺序；1、2 与旧版一致
@@ -170,7 +171,7 @@ def copy_runtime():
 
 def _link_cli_win():
     """Windows：在 WindowsApps（默认就在 PATH 里）放一个 purrge.cmd。"""
-    target = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData/Local")) / "Microsoft/WindowsApps/purrge.cmd"
+    target = WIN_CLI
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(f'@"{sys.executable}" "{INSTALLED_APP / "lib/dg.py"}" %*\r\n', encoding="utf-8")
     return str(target.parent).lower() in os.environ.get("PATH", "").lower()

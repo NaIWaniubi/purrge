@@ -231,9 +231,11 @@ def cmd_post_update(args):
 
 def cmd_uninstall(args):
     plat.uninstall_monitor(LABEL)
-    from installer import CLI_LINK, SKILL_DIRS
+    from installer import CLI_LINK, SKILL_DIRS, WIN_CLI
     if CLI_LINK.is_symlink():
         CLI_LINK.unlink()
+    if sys.platform == "win32" and WIN_CLI.exists():   # Windows 的 purrge 命令是 WindowsApps 里的 purrge.cmd
+        WIN_CLI.unlink()
     for d in SKILL_DIRS.values():
         shutil.rmtree(d, ignore_errors=True)
     if "--purge" in args:

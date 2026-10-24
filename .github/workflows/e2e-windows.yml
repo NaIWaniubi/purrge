@@ -89,3 +89,14 @@ jobs:
         with:
           name: popup-${{ matrix.os }}
           path: ${{ runner.temp }}/alert-*.png
+      - name: 卸载干净
+        shell: pwsh
+        run: |
+          & "$env:LOCALAPPDATA\Microsoft\WindowsApps\purrge.cmd" uninstall --purge
+          $left = @()
+          if (Test-Path "$env:LOCALAPPDATA\Microsoft\WindowsApps\purrge.cmd") { $left += "purrge.cmd" }
+          if (Test-Path "$env:USERPROFILE\.purrge") { $left += ".purrge" }
+          if (Test-Path "HKCU:\Software\Classes\AppUserModelId\RabbittuX.Purrge") { $left += "通知身份" }
+          schtasks /Query /TN "Purrge-com.rabbittux.purrge" 2>$null | Out-Null; if ($LASTEXITCODE -eq 0) { $left += "定时任务" }
+          if ($left) { throw "卸载后还留着：$($left -join '、')" }
+          "卸载干净"
