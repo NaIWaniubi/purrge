@@ -102,3 +102,4 @@ jobs:
           schtasks /Query /TN "Purrge-com.rabbittux.purrge" 2>$null | Out-Null; if ($LASTEXITCODE -eq 0) { $left += "定时任务" }
           if ($left) { throw "卸载后还留着：$($left -join '、')" }
           "卸载干净"
+          exit 0                                         # 上面查定时任务"不存在"时 schtasks 返回 1，那正是想要的结果
