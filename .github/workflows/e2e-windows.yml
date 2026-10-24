@@ -4,7 +4,7 @@ name: e2e-windows
 on:
   workflow_dispatch:
   push:
-    branches: [v0.3-dev]
+    branches: [master, v0.3-dev]
 jobs:
   e2e:
     strategy:

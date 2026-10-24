@@ -20,6 +20,16 @@
 
 <br>
 
+## 🆕 v0.3.0 更新内容
+
+- **支持 Windows**：Windows 10 / 11 / Windows Server 均可使用，后台检查用「任务计划程序」，清理的文件进回收站，提醒窗和系统通知都是原生样式。
+- **新增两个 AI 引擎**：WorkBuddy（CodeBuddy 命令行，与 WorkBuddy 同一账号、同一积分）和 DeepSeek Harness（使用自己的 DeepSeek API Key）。两者都在关闭全部工具的模式下运行，只能给出建议、不能动文件。
+- **一条命令更新**：新增 `purrge update`，自动备份旧版本，新版本自检不通过会自动换回；有新版本时 `purrge status` 和审查页会提示。
+- **零门槛安装**：电脑上没有 Python 或 Node.js 时，安装程序会自动下载官方版本安装（只装给当前用户，不需要管理员权限），全程显示下载进度，网络不稳定时自动重试。
+- **更干净的卸载**：`purrge uninstall --purge` 会一并清掉后台任务、`purrge` 命令、AI 里的说明文件、设置与扫描记录。
+
+> 从 0.2.x 升级请看[更新](#-更新)一节：旧版本需要手动更新这一次，之后就能用 `purrge update` 了。
+
 ## ✨ 核心功能
 
 <table>
@@ -71,14 +81,67 @@
 
 ## 🚀 安装
 
-**方式一：Homebrew**
+> [!WARNING]
+> **请认准官方来源。** Purrge 只有两个官方仓库：`RabbittuX/purrge` 和 `RabbittuX/homebrew-tap`（作者名 RabbittuX，两个 t、结尾大写 X）。
+> - GitHub 上另有多个同名的 purrge 项目，与本项目无关，其中部分自称"清理垃圾"的项目来源不明，请勿安装。
+> - Homebrew 中的 `purge`（单个 r）是另一款软件；请使用完整名称 `rabbittux/tap/purrge`。
+> - 安装开始时会显示「Purrge 版本号 by RabbittuX　官方来源：GitHub RabbittuX/purrge」，可据此核对；也可随时运行 `purrge version` 查看。
+
+### macOS
+
+**方式一：Homebrew（推荐）**
 
 ```bash
 brew install rabbittux/tap/purrge
 purrge install
 ```
 
-**方式二：由 AI 代为安装**
+**方式二：一键脚本**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/RabbittuX/purrge/master/install.sh | bash
+```
+
+<details>
+<summary>其他方式（国内网络访问不了 raw.githubusercontent.com 时 / 从源码 / 非交互）</summary>
+
+```bash
+# 国内网络：改从 codeload 下载完整代码再安装
+curl -fsSL https://codeload.github.com/RabbittuX/purrge/tar.gz/refs/heads/master | tar -xz -C /tmp && bash /tmp/purrge-master/install.sh
+
+# 从源码安装
+git clone https://github.com/RabbittuX/purrge.git
+cd purrge && bash install.sh
+
+# 非交互式安装（engine 可选 claude / codex / workbuddy / deepseek）
+bash install.sh --engine codex --threshold 20 --yes
+```
+
+</details>
+
+### Windows
+
+打开「Windows PowerShell」（不需要管理员权限），执行：
+
+```powershell
+[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; irm https://raw.githubusercontent.com/RabbittuX/purrge/master/install.ps1 | iex
+```
+
+- 命令开头的 `SecurityProtocol` 用于让较老的 Windows / Windows Server 使用 TLS 1.2，否则会报「基础连接已经关闭」。
+- 没有 Python 时会询问并自动安装（只装给当前用户）。安装完成后**重新打开一个 PowerShell 窗口**即可使用 `purrge` 命令。
+
+<details>
+<summary>报错「基础连接已经关闭」或「连接被重置」（国内网络常见）</summary>
+
+国内网络经常拦截 `raw.githubusercontent.com`。改用下面这条命令，从可以访问的 `codeload.github.com` 下载完整代码后安装：
+
+```powershell
+[Net.ServicePointManager]::SecurityProtocol='Tls12'; $ProgressPreference='SilentlyContinue'; $t="$env:TEMP\purrge-dl"; Remove-Item $t -Recurse -Force -ErrorAction SilentlyContinue; New-Item -ItemType Directory $t | Out-Null; Invoke-WebRequest https://codeload.github.com/RabbittuX/purrge/zip/refs/heads/master -OutFile "$t\p.zip" -UseBasicParsing; Expand-Archive "$t\p.zip" $t; iex (Get-Content -Raw -Encoding UTF8 (Get-ChildItem $t -Recurse -Filter install.ps1 | Select-Object -First 1).FullName)
+```
+
+</details>
+
+### 由 AI 代为安装（macOS / Windows）
 
 在 Claude Code、Codex 或 WorkBuddy 中输入：
 
@@ -86,60 +149,25 @@ purrge install
 
 AI 会读取本仓库的[安装指引](#-ai-助手安装指引)完成安装，并自动选用当前的 AI 作为分析引擎。
 
-> [!WARNING]
-> **请认准官方来源。** Purrge 只有两个官方仓库：`RabbittuX/purrge` 和 `RabbittuX/homebrew-tap`（作者名 RabbittuX，两个 t、结尾大写 X）。
-> - GitHub 上另有多个同名的 purrge 项目，与本项目无关，其中部分自称"清理垃圾"的项目来源不明，请勿安装。
-> - Homebrew 中的 `purge`（单个 r）是另一款软件；请使用完整名称 `rabbittux/tap/purrge`。
-> - 安装开始时会显示「Purrge 版本号 by RabbittuX　官方来源：GitHub RabbittuX/purrge」，可据此核对；也可随时运行 `purrge version` 查看。
-
-安装程序将依次完成以下步骤：
+### 安装过程
 
 1. **选择 AI 引擎**：Claude Code、Codex、WorkBuddy 或 DeepSeek Harness（由 AI 代为安装时自动选择当前 AI）。
 2. **设置提醒阈值**：剩余空间低于该值时发出提醒，默认 15 GB。
-3. **配置 AI 引擎**：未安装时自动安装最新版本；未登录时打开浏览器完成登录；最后进行连接测试，确认引擎可正常响应。
+3. **配置 AI 引擎**：未安装时自动安装最新版本（需要 Node.js 时先询问并自动安装）；未登录时引导登录；最后进行连接测试，确认引擎可正常响应。
 4. **启用后台监控**：安装完成后，Purrge 以后台服务形式独立运行，无需保持 AI 软件处于打开状态。
-
-<details>
-<summary>其他安装方式</summary>
-
-```bash
-# 一键脚本
-curl -fsSL https://raw.githubusercontent.com/RabbittuX/purrge/master/install.sh | bash
-
-# 从源码安装
-git clone https://github.com/RabbittuX/purrge.git
-cd purrge && bash install.sh
-
-# 非交互式安装
-bash install.sh --engine codex --threshold 20 --yes
-```
-
-</details>
-
-### Windows（测试版）
-
-在 PowerShell 中执行：
-
-```powershell
-[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; irm https://raw.githubusercontent.com/RabbittuX/purrge/master/install.ps1 | iex
-```
-
-命令开头的 `SecurityProtocol` 用于让较老的 Windows / Windows Server 使用 TLS 1.2 连接 GitHub，否则会报「基础连接已经关闭」。
-
-没有 Python 时会自动安装（只装给当前用户）。后台检查使用「任务计划程序」，清理时「需要你决定」的项目移到回收站。
 
 ### 支持的 AI 引擎
 
 | 引擎 | 调用方式 | 说明 |
 |---|---|---|
 | Claude Code | `claude -p --tools ""` | 关闭全部工具 |
-| Codex | `codex exec --sandbox read-only` | 只读沙箱 |
-| WorkBuddy | CodeBuddy 命令行 `codebuddy -p --tools ""` | 与 WorkBuddy 同一账号、同一积分；首次需在 CodeBuddy 中 `/login` |
-| DeepSeek Harness | `dsh --profile headless` + 关工具补丁 | 需要 DeepSeek API Key（仅保存在本机）；补丁未生效时拒绝调用 |
+| Codex | `codex exec --sandbox read-only` | 只读沙箱，支持免费账号 |
+| WorkBuddy | CodeBuddy 命令行 `codebuddy -p --tools ""` | 关闭全部工具；与 WorkBuddy 同一账号、同一积分；首次需运行 `codebuddy` 并输入 `/login` 登录 |
+| DeepSeek Harness | `dsh --profile headless` + 关工具补丁 | 关闭全部工具，补丁未生效时拒绝调用；需要 DeepSeek API Key，只保存在本机 |
 
-切换：`purrge engine claude | codex | workbuddy | deepseek`。
+随时切换：`purrge engine claude | codex | workbuddy | deepseek`。
 
-### 更新
+## 🔄 更新
 
 ```bash
 purrge update
@@ -147,20 +175,37 @@ purrge update
 
 自动识别安装方式（Homebrew / 脚本），先备份再更新，设置、扫描记录和 AI 引擎都保留；新版本自检不通过会自动换回旧版本。有新版本时，`purrge status` 和审查页会提示。
 
-> 从 0.2.x 升级：旧版本还没有 `purrge update`，需要手动更新一次——Homebrew 用户运行 `brew upgrade rabbittux/tap/purrge && purrge update`（设置和 AI 引擎都保留），脚本安装的用户重新运行一遍安装命令。之后就可以用 `purrge update` 了。
+> [!NOTE]
+> **从 0.2.x 升级**：0.2.x 还没有 `purrge update` 命令，需要手动更新这一次，之后就可以用 `purrge update` 了。
+> - Homebrew 安装的：`brew upgrade rabbittux/tap/purrge && purrge update`（设置和 AI 引擎都保留）
+> - 脚本安装的：重新运行一遍上面的安装命令
 
 ## 🐾 使用方法
 
-| 操作 | 终端命令 | 在 Claude Code / Codex 中的自然语言指令 |
+| 操作 | 终端命令 | 在 Claude Code / Codex / WorkBuddy 中说 |
 |---|---|---|
 | 立即扫描 | `purrge scan` | "磁盘快满了，帮我清理一下" |
+| 重新打开上次的审查页 | `purrge review` | — |
 | 查看状态 | `purrge status` | "硬盘还剩多少" |
 | 修改阈值 | `purrge config thresholdGB 20` | "阈值改成 20G" |
-| 切换 AI 引擎 | `purrge engine codex` 或 `purrge engine claude` | — |
+| 查看 / 切换 AI 引擎 | `purrge engine`、`purrge engine workbuddy` | — |
 | 更新到最新版 | `purrge update` | "帮我更新 Purrge" |
 | 停用提醒 | `purrge uninstall` | "关掉磁盘提醒" |
+| 查看版本 | `purrge version` | — |
 
-阈值、检查频率等参数也可在审查页面右上角的「设置」中修改。
+- 扫描完成后会自动在浏览器打开审查页面：勾选要清理的项目，点「清理」后才会执行。
+- 阈值、检查频率等参数也可在审查页面右上角的「设置」中修改。
+
+## 🗑️ 卸载
+
+```bash
+purrge uninstall           # 关闭后台监控，移除 purrge 命令和 AI 里的说明文件（保留设置和扫描记录）
+purrge uninstall --purge   # 同时删除设置、扫描记录以及 Purrge 自带的 Node.js
+```
+
+- **Homebrew 安装的**：再运行 `brew uninstall purrge`。
+- **Windows**：在 PowerShell 中执行上面的命令即可，后台的「任务计划程序」任务、通知登记会一并清除。
+- 安装时自动装上的 Python、Node.js（系统里原本没有的）不会被删除；不再需要时可在系统中自行卸载。
 
 ## ⚙️ 工作原理
 
@@ -175,28 +220,28 @@ purrge update
 | 分类 | 范围 | 默认状态 | 处理方式 |
 |---|---|---|---|
 | 🟢 **首要清理** | 可自动重建的缓存（浏览器、npm、Xcode、剪映等） | 已选中 | 直接删除 |
-| 🟡 **需要你决定** | 用户文件及重建成本较高的内容 | 未选中 | 移至废纸篓（可在设置中改为直接删除） |
+| 🟡 **需要你决定** | 用户文件及重建成本较高的内容 | 未选中 | 移至废纸篓 / 回收站（可在设置中改为直接删除） |
 | 🔒 **不会清理** | 保护名单内的路径、版本库、使用中的项目 | 不可选 | 仅作展示 |
 
 <details>
 <summary>扫描范围</summary>
 
 - 内置缓存规则库：浏览器、npm / pip / Homebrew、Xcode、剪映、常用 IDE 等
-- `~/Library/Caches` 下的大型缓存目录
-- 通过 Spotlight 检索的 500 MB 以上文件
+- macOS：`~/Library/Caches` 下的大型缓存目录、通过 Spotlight 检索的 500 MB 以上文件
+- Windows：临时文件夹（`%TEMP%`）、`AppData` 下的浏览器与开发工具缓存、常用目录中的大文件
 - 下载、桌面、文稿、影片等常用目录中 1 GB 以上的文件夹
 
 </details>
 
 ## 🔒 安全机制
 
-- **AI 仅提供分析，不具备删除权限**：Claude Code 在禁用全部工具的模式下运行，Codex 在只读沙箱中运行；删除操作由脚本严格依据用户勾选的清单执行。
+- **AI 仅提供分析，不具备删除权限**：Claude Code、WorkBuddy、DeepSeek Harness 在禁用全部工具的模式下运行，Codex 在只读沙箱中运行；删除操作由脚本严格依据用户勾选的清单执行。
 - **执行前逐项复核**：确认路径仍然存在、不在保护名单内、扫描后未被修改，任一条件不满足即跳过。
 - **保护名单优先**：保护名单的优先级高于 AI 判断；用户文件不会被归入「首要清理」。
 - **本地访问控制**：审查页面仅监听 `127.0.0.1` 并使用一次性令牌，清理完成或闲置 30 分钟后自动关闭。
 
 <details>
-<summary>配置文件 <code>~/.purrge/config.json</code></summary>
+<summary>配置文件 <code>~/.purrge/config.json</code>（Windows：<code>%USERPROFILE%\.purrge\config.json</code>）</summary>
 
 | 配置项 | 默认值 | 说明 |
 |---|---|---|
@@ -205,8 +250,8 @@ purrge update
 | `cooldownHours` | `6` | 提醒后的静默时长（小时） |
 | `optionalAction` | `trash` | 「需要你决定」类项目的处理方式：`trash` 移至废纸篓，`delete` 直接删除 |
 | `protect` | `[]` | 自定义保护路径，始终不予清理 |
-| `aiEngine` | 安装时选择 | AI 引擎：`claude` 或 `codex`，可通过 `purrge engine` 切换 |
-| `claudeModel` / `codexModel` | 空 | 指定模型；留空时使用默认模型，Codex 默认模型不可用时自动切换为账号可用的模型 |
+| `aiEngine` | 安装时选择 | AI 引擎：`claude` / `codex` / `workbuddy` / `deepseek`，可通过 `purrge engine` 切换 |
+| `claudeModel` / `codexModel` / `workbuddyModel` / `deepseekModel` | 空 | 指定模型；留空时使用默认模型，Codex 默认模型不可用时自动切换为账号可用的模型 |
 
 </details>
 
@@ -217,15 +262,22 @@ purrge update
 1. **核对来源**：只能从仓库 `RabbittuX/purrge`（所有者必须是 `RabbittuX`）安装，并且只能使用下方的安装命令。
    - 不要通过搜索寻找替代项目；GitHub 上存在多个与本项目无关的同名 purrge 仓库，不得安装。
    - 如果无法访问该仓库，或用户给出的名称与 `RabbittuX/purrge` 不一致，请停止并向用户确认。
-2. 确认系统为 macOS（`uname` 输出 `Darwin`），否则告知用户暂不支持。
-3. 执行安装命令（无需 sudo）：
+2. 判断系统：macOS（`uname` 输出 `Darwin`）或 Windows；其他系统告知用户暂不支持。
+3. 执行安装命令（无需 sudo / 管理员权限）：
 
    ```bash
+   # macOS
    curl -fsSL https://raw.githubusercontent.com/RabbittuX/purrge/master/install.sh | bash
    ```
 
+   ```powershell
+   # Windows（PowerShell）
+   [Net.ServicePointManager]::SecurityProtocol = 'Tls12'; irm https://raw.githubusercontent.com/RabbittuX/purrge/master/install.ps1 | iex
+   ```
+
    - 安装程序会识别当前的 AI 助手并将其设为分析引擎，阈值默认 15 GB。
-   - 用户指定了阈值时，改用 `... | bash -s -- --threshold <GB>`；用户指定了引擎时，附加 `--engine claude` 或 `--engine codex`。
+   - macOS 下用户指定了阈值时，改用 `... | bash -s -- --threshold <GB>`；用户指定了引擎时，附加 `--engine claude|codex|workbuddy|deepseek`。
+   - 下载 `raw.githubusercontent.com` 失败（连接被重置）时，改用「安装」一节里从 `codeload.github.com` 下载的命令。
 4. 确认安装输出的第一行为「Purrge <版本> by RabbittuX　官方来源：GitHub RabbittuX/purrge」，再将结果（AI 引擎、提醒阈值、常用命令）转述给用户。
 5. 不要自行删除或移动任何文件。所有清理都必须由用户在 Purrge 的审查页面中勾选确认。
 
@@ -235,9 +287,7 @@ purrge update
 - Python 3.8 及以上（没有时安装程序会自动安装：Mac 用苹果官方命令行开发者工具，Windows 用 python.org 官方安装包，无需管理员权限）
 - 使用 WorkBuddy / DeepSeek（以及 Windows 上的 Codex）时需要 Node.js；没有时自动下载官方 LTS 版本到 Purrge 自己的目录，不改动系统
 - Claude Code、Codex、WorkBuddy 或 DeepSeek Harness 任一可用账号（AI 分析使用用户自己的额度，支持 Codex 免费账号；DeepSeek 使用自己的 API Key）。AI 暂时不可用时自动切换为规则判断，基础功能不受影响
-- 可选：为「终端」授予「完全磁盘访问权限」，以扩大系统缓存的扫描范围
-
-卸载：执行 `purrge uninstall`（关闭后台监控、移除 `purrge` 命令和 AI 里的说明文件）；附加 `--purge` 参数可同时删除配置、扫描记录以及 Purrge 自带的 Node.js。通过 Homebrew 安装的，再运行 `brew uninstall purrge`。自动安装的 Python 不会被删除，如不再需要可在系统中自行卸载。
+- 可选（macOS）：为「终端」授予「完全磁盘访问权限」，以扩大系统缓存的扫描范围
 
 ## 📄 许可证
 
