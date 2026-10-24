@@ -632,6 +632,11 @@ class TestLifecycle(Base):
                   "monitor": (P / "monitor.test").is_file(), "threshold": json.loads((P / "config.json").read_text())["thresholdGB"],
                   "engine": json.loads((P / "config.json").read_text())["aiEngine"]}
         b = sh(str(P / "app/lib/dg.py"), "uninstall", "--purge")
+        import time
+        for _ in range(40):                                    # Windows 的 purrge.cmd 由后台小任务在命令结束后约 2 秒删除
+            if not any(c.exists() or c.is_symlink() for c in cli):
+                break
+            time.sleep(0.25)
         after = {"home": P.exists(), "skill": (H / ".claude/skills/purrge").exists(), "cli": [str(c) for c in cli if c.exists() or c.is_symlink()]}
         print("@@" + json.dumps({"rc": [a.returncode, b.returncode], "before": before, "after": after, "log": (a.stdout + a.stderr)[-800:] + b.stdout}))
         ''')

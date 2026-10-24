@@ -240,7 +240,8 @@ def cmd_uninstall(args):
     if sys.platform == "win32" and WIN_CLI.exists():
         # Windows 的 purrge 命令是 WindowsApps 里的 purrge.cmd，而且此刻正在运行：直接删掉，cmd 会报 "The batch file cannot be found."
         # 所以交给一个后台小任务，等这次命令结束后再删
-        subprocess.Popen(["cmd", "/c", f'ping -n 3 127.0.0.1 >nul & del /f /q "{WIN_CLI}"'],
+        # 整行原样交给 cmd（用列表的话 Python 会把引号转义成 cmd 不认识的 \"）
+        subprocess.Popen(f'cmd /c ping -n 3 127.0.0.1 >nul & del /f /q "{WIN_CLI}"',
                          creationflags=0x00000008 | 0x08000000, close_fds=True)   # DETACHED_PROCESS | CREATE_NO_WINDOW
     for d in SKILL_DIRS.values():
         shutil.rmtree(d, ignore_errors=True)
