@@ -230,7 +230,10 @@ def cmd_post_update(args):
 
 
 def cmd_uninstall(args):
-    plat.uninstall_monitor(LABEL)
+    if os.environ.get("PURRGE_TEST_NO_MONITOR"):     # 测试专用：不碰真实的后台任务
+        (DG_HOME / "monitor.test").unlink(missing_ok=True)
+    else:
+        plat.uninstall_monitor(LABEL)
     from installer import CLI_LINK, SKILL_DIRS, WIN_CLI
     if CLI_LINK.is_symlink():
         CLI_LINK.unlink()

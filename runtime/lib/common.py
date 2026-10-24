@@ -39,7 +39,7 @@ DEFAULT_CONFIG = {
 
 def expand(p):
     out = Path(os.path.expandvars(os.path.expanduser(p)))
-    if sys.platform == "win32" and "~" in str(out) and out.exists():   # %TEMP% 常是 C:\Users\ADMINI~1 这种短名，换成完整路径给人看
+    if sys.platform == "win32" and "~" in str(out) and out.exists():   # %TEMP% 常是 C:\Users\ABCDEF~1 这种 8.3 短名，换成完整路径给人看
         out = Path(os.path.realpath(out))
     return out
 

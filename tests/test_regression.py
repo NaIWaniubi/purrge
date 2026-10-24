@@ -608,5 +608,65 @@ class TestScanAndServer(Base):
         self.assertEqual(r["reveal_unknown"], {"ok": False})
 
 
+
+class TestLifecycle(Base):
+    """完整生命周期：安装 → 手动扫描 → 审查页 → 卸载干净（都在临时 HOME 里，不碰真实的后台任务和浏览器）。"""
+
+    def setUp(self):
+        super().setUp()
+        (self.e.home / ".claude").mkdir()                      # 让安装程序给 Claude Code 放说明文件
+        self.e.extra = {"LOCALAPPDATA": str(self.e.home / "AppData/Local"), "APPDATA": str(self.e.home / "AppData/Roaming")}
+
+    def test_install_then_uninstall(self):
+        r = self.e.run(r'''
+        import os, subprocess
+        from pathlib import Path
+        H, P = Path.home(), Path(os.environ["PURRGE_HOME"])
+        dg = str(Path(sys.path[0]) / "dg.py")
+        def sh(*a):
+            return subprocess.run([sys.executable, *a], capture_output=True, text=True, encoding="utf-8")
+        a = sh(dg, "install", "--engine", "claude", "--threshold", "15", "--yes")
+        import installer
+        cli = [c for c in (installer.CLI_LINK, installer.WIN_CLI) if c.exists() or c.is_symlink()]
+        before = {"app": (P / "app/lib/dg.py").is_file(), "skill": (H / ".claude/skills/purrge/SKILL.md").is_file(),
+                  "monitor": (P / "monitor.test").is_file(), "threshold": json.loads((P / "config.json").read_text())["thresholdGB"],
+                  "engine": json.loads((P / "config.json").read_text())["aiEngine"]}
+        b = sh(str(P / "app/lib/dg.py"), "uninstall", "--purge")
+        after = {"home": P.exists(), "skill": (H / ".claude/skills/purrge").exists(), "cli": [str(c) for c in cli if c.exists() or c.is_symlink()]}
+        print("@@" + json.dumps({"rc": [a.returncode, b.returncode], "before": before, "after": after, "log": (a.stdout + a.stderr)[-800:] + b.stdout}))
+        ''')
+        self.assertEqual(r["rc"], [0, 0], r["log"])
+        self.assertEqual(r["before"], {"app": True, "skill": True, "monitor": True, "threshold": 15, "engine": "claude"})
+        self.assertEqual(r["after"], {"home": False, "skill": False, "cli": []}, "卸载后设置、程序、说明文件、purrge 命令都要删掉")
+
+    def test_manual_scan_to_review(self):
+        (self.e.home / "Library/Caches/SomeApp").mkdir(parents=True)
+        (self.e.home / "Library/Caches/SomeApp/blob.bin").write_bytes(b"x" * 4096)
+        r = self.e.run(r'''
+        import threading, time, urllib.request, shutil
+        from pathlib import Path
+        from common import load_config, save_config, DG_HOME
+        c = load_config(); c["aiEngine"] = "claude"; c["claudePath"] = shutil.which("claude"); save_config(c)
+        import dg
+        dg.notify = lambda *a: None                            # 测试里不弹真实通知
+        threading.Thread(target=dg.cmd_run, args=(["--no-open"],), daemon=True).start()
+        url = None
+        for _ in range(600):
+            f = list((DG_HOME / "runs").glob("*/review-url.txt")) if (DG_HOME / "runs").exists() else []
+            if f:
+                url = f[0].read_text(); break
+            time.sleep(0.1)
+        run = f[0].parent
+        rv = json.loads((run / "review.json").read_text(encoding="utf-8"))
+        base, tok = url.split("/?")[0], url.split("token=")[1]
+        req = urllib.request.Request(base + "/api/close", data=b"{}", headers={"X-DG-Token": tok, "Content-Type": "application/json"})
+        closed = json.loads(urllib.request.urlopen(req).read())
+        print("@@" + json.dumps({"cand": (run / "candidates.json").is_file(), "judgedBy": rv.get("judgedBy"),
+                                 "page": urllib.request.urlopen(url).status, "closed": closed}))
+        ''')
+        self.assertIn(r.pop("judgedBy"), ("ai", "rules"))         # 判断本身由 TestClassify 覆盖，这里只看流程走通
+        self.assertEqual(r, {"cand": True, "page": 200, "closed": {"ok": True}})
+
+
 if __name__ == "__main__":
     unittest.main()
