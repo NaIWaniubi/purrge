@@ -93,6 +93,8 @@ jobs:
         shell: pwsh
         run: |
           & "$env:LOCALAPPDATA\Microsoft\WindowsApps\purrge.cmd" uninstall --purge
+          if ($LASTEXITCODE -ne 0) { throw "卸载命令返回 $LASTEXITCODE" }
+          Start-Sleep 5                                  # purrge.cmd 由后台小任务在命令结束后删除
           $left = @()
           if (Test-Path "$env:LOCALAPPDATA\Microsoft\WindowsApps\purrge.cmd") { $left += "purrge.cmd" }
           if (Test-Path "$env:USERPROFILE\.purrge") { $left += ".purrge" }

@@ -173,8 +173,7 @@ def _link_cli_win():
     """Windows：在 WindowsApps（默认就在 PATH 里）放一个 purrge.cmd。"""
     target = WIN_CLI
     target.parent.mkdir(parents=True, exist_ok=True)
-    # 整条命令写在一行并以 exit /b 结尾：卸载时这个文件会删掉自己，cmd 就不会再回头读下一行（否则报 "The batch file cannot be found."）
-    target.write_text(f'@"{sys.executable}" "{INSTALLED_APP / "lib/dg.py"}" %* & exit /b\r\n', encoding="utf-8")
+    target.write_text(f'@"{sys.executable}" "{INSTALLED_APP / "lib/dg.py"}" %*\r\n', encoding="utf-8")
     return str(target.parent).lower() in os.environ.get("PATH", "").lower()
 
 

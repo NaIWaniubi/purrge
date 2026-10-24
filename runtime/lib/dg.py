@@ -221,9 +221,6 @@ def cmd_post_update(args):
     install_monitor(cfg)
     if cfg.get("aiEngine"):
         install_skill(cfg["aiEngine"])
-    from installer import WIN_CLI, link_cli
-    if sys.platform == "win32" and WIN_CLI.exists():   # 顺带刷新 Windows 的 purrge 命令（新版写法卸载时不报错）
-        link_cli()
     free, total = disk_status()
     assert total > 0 and 0 <= free <= total, "磁盘信息读取失败"
     assert (INSTALLED_APP / "web/review.html").is_file() and (INSTALLED_APP / "rules").is_dir(), "程序文件不完整"
@@ -240,8 +237,11 @@ def cmd_uninstall(args):
     from installer import CLI_LINK, SKILL_DIRS, WIN_CLI
     if CLI_LINK.is_symlink():
         CLI_LINK.unlink()
-    if sys.platform == "win32" and WIN_CLI.exists():   # Windows 的 purrge 命令是 WindowsApps 里的 purrge.cmd
-        WIN_CLI.unlink()
+    if sys.platform == "win32" and WIN_CLI.exists():
+        # Windows 的 purrge 命令是 WindowsApps 里的 purrge.cmd，而且此刻正在运行：直接删掉，cmd 会报 "The batch file cannot be found."
+        # 所以交给一个后台小任务，等这次命令结束后再删
+        subprocess.Popen(["cmd", "/c", f'ping -n 3 127.0.0.1 >nul & del /f /q "{WIN_CLI}"'],
+                         creationflags=0x00000008 | 0x08000000, close_fds=True)   # DETACHED_PROCESS | CREATE_NO_WINDOW
     for d in SKILL_DIRS.values():
         shutil.rmtree(d, ignore_errors=True)
     if "--purge" in args:
