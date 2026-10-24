@@ -153,9 +153,9 @@ def is_package(path):
     return False
 
 
-AUMID = "RabbittuX.Purrge"
+_AUMID = "RabbittuX.Purrge"
 _ICON = Path(__file__).resolve().parents[2] / "assets" / "icon.png"
-_AUMID_KEY = "HKCU:\\Software\\Classes\\AppUserModelId\\" + AUMID
+_AUMID_KEY = "HKCU:\\Software\\Classes\\AppUserModelId\\" + _AUMID
 
 
 def notify(title, text):
@@ -171,7 +171,7 @@ def notify(title, text):
         "$x = New-Object Windows.Data.Xml.Dom.XmlDocument; "
         "$x.LoadXml(\"<toast><visual><binding template='ToastGeneric'><text>$t</text><text>$b</text>"
         "<image placement='appLogoOverride' src='$i'/></binding></visual></toast>\"); "
-        f"[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier({_q(AUMID)}).Show("
+        f"[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier({_q(_AUMID)}).Show("
         "[Windows.UI.Notifications.ToastNotification]::new($x))")
     if _ps(toast, timeout=30).returncode == 0:
         return "toast"
