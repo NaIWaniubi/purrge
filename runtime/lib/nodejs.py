@@ -10,6 +10,7 @@ import shutil
 import sys
 import tarfile
 import tempfile
+import time
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -56,6 +57,34 @@ def _get(url, dest=None, timeout=60):
             shutil.copyfileobj(r, f)
 
 
+def _download(url, dest, say):
+    """下载大文件：同一行刷新百分比和 MB 数；网络时好时坏时自动重试 3 次。"""
+    for attempt in range(1, 4):
+        total = 0
+        try:
+            with urllib.request.urlopen(url, timeout=60) as r, open(dest, "wb") as f:
+                total, done, last = int(r.headers.get("Content-Length") or 0), 0, 0.0
+                while True:
+                    chunk = r.read(1 << 16)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+                    done += len(chunk)
+                    if total and time.time() - last > 0.5:
+                        last = time.time()
+                        print(f"\r    下载中 {done * 100 // total}%  {done / 1048576:.0f}/{total / 1048576:.0f} MB", end="", flush=True)
+            if total:
+                print(f"\r    下载完成 {total / 1048576:.0f} MB" + " " * 12, flush=True)
+            return
+        except OSError as e:
+            if total:
+                print(flush=True)   # 进度行换行，别和下面的提示挤在一行
+            if attempt == 3:
+                raise
+            say(f"下载中断（{e}），3 秒后重试…")
+            time.sleep(3)
+
+
 def _latest_lts():
     """nodejs.org 官方版本列表里最新的 LTS 版本号，如 v22.21.0。"""
     for rel in json.loads(_get(f"{DIST}/index.json")):
@@ -75,7 +104,7 @@ def _install_portable(say):
         raise RuntimeError(f"官方校验清单里没有 {fname}")
     with tempfile.TemporaryDirectory() as tmp:
         pkg = Path(tmp) / fname
-        _get(f"{DIST}/{ver}/{fname}", pkg, timeout=600)
+        _download(f"{DIST}/{ver}/{fname}", pkg, say)
         h = hashlib.sha256(pkg.read_bytes()).hexdigest()
         if h != want:
             raise RuntimeError("下载的文件和官方校验值对不上，已放弃安装")

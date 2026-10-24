@@ -19,6 +19,23 @@ function Find-Py {
   if ($local -and (Test-Py $local.FullName)) { return $local.FullName }
   return $null
 }
+function Get-File($url, $out) {
+  # 优先用系统自带的 curl.exe：有进度条，比 Invoke-WebRequest 快；网络时好时坏时自动重试
+  $curl = Get-Command curl.exe -ErrorAction SilentlyContinue
+  for ($i = 1; $i -le 3; $i++) {
+    $ok = $false
+    if ($curl) {
+      $old = $ErrorActionPreference; $ErrorActionPreference = "Continue"   # curl 的进度条写在 stderr，不能当成错误
+      & $curl.Source -L --fail --progress-bar -o $out $url
+      $ok = ($LASTEXITCODE -eq 0); $ErrorActionPreference = $old
+    } else {
+      try { Invoke-WebRequest $url -OutFile $out -UseBasicParsing; $ok = $true } catch { $ok = $false }
+    }
+    if ($ok -and (Test-Path $out)) { return $true }
+    if ($i -lt 3) { Write-Host "下载没成功，3 秒后重试（第 $i 次）…"; Start-Sleep 3 }
+  }
+  return $false
+}
 function Update-PathEnv {
   $env:Path = [Environment]::GetEnvironmentVariable("Path", "User") + ";" + [Environment]::GetEnvironmentVariable("Path", "Machine")
 }
@@ -32,8 +49,14 @@ if (-not $py) {
     return   # 不用 exit：irm | iex 方式下 exit 会直接关掉用户的 PowerShell 窗口
   }
   if (Get-Command winget -ErrorAction SilentlyContinue) {
-    Write-Host "正在用 winget 安装 Python…"
-    winget install -e --id Python.Python.3.12 --scope user --silent --accept-package-agreements --accept-source-agreements | Out-Host
+    Write-Host "正在用 winget 安装 Python（下面会显示下载进度；超过 10 分钟没有变化可以按 Ctrl+C 后重新运行）…"
+    # 不接管道直接输出到窗口：进度条才显示得出来；winget 输出的是 UTF-8，临时把窗口编码切成 UTF-8，避免中文乱码
+    $oldEnc = $null
+    try { $oldEnc = [Console]::OutputEncoding; [Console]::OutputEncoding = [Text.Encoding]::UTF8 } catch {}
+    $old = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+    winget install -e --id Python.Python.3.12 --scope user --silent --accept-package-agreements --accept-source-agreements
+    $ErrorActionPreference = $old
+    if ($oldEnc) { try { [Console]::OutputEncoding = $oldEnc } catch {} }
     Update-PathEnv
     $py = Find-Py
   }
@@ -42,10 +65,8 @@ if (-not $py) {
     $arch = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64" } else { "amd64" }
     $exe = Join-Path $env:TEMP "python-$ver-$arch.exe"
     Write-Host "正在从 python.org 下载 Python $ver…"
-    try {
-      Invoke-WebRequest "https://www.python.org/ftp/python/$ver/python-$ver-$arch.exe" -OutFile $exe
-    } catch {
-      Write-Host "下载失败：$($_.Exception.Message)。请从 https://www.python.org 手动安装后重新运行这条命令。"
+    if (-not (Get-File "https://www.python.org/ftp/python/$ver/python-$ver-$arch.exe" $exe)) {
+      Write-Host "下载失败。请检查网络后重新运行这条命令，或从 https://www.python.org 手动安装。"
       return   # 不用 exit：irm | iex 方式下 exit 会直接关掉用户的 PowerShell 窗口
     }
     $sig = Get-AuthenticodeSignature $exe       # 只运行 Python 软件基金会签名的官方安装包
@@ -54,8 +75,13 @@ if (-not $py) {
       Write-Host "安装包签名校验没通过，已放弃安装。请从 https://www.python.org 手动安装。"
       return   # 不用 exit：irm | iex 方式下 exit 会直接关掉用户的 PowerShell 窗口
     }
-    Write-Host "正在安装（约 1～2 分钟）…"
-    Start-Process $exe -ArgumentList "/quiet InstallAllUsers=0 PrependPath=1 Include_launcher=0 Include_test=0" -Wait
+    $p = Start-Process $exe -ArgumentList "/quiet InstallAllUsers=0 PrependPath=1 Include_launcher=0 Include_test=0" -PassThru
+    $t0 = Get-Date
+    while (-not $p.HasExited) {                 # 静默安装没有界面：每 2 秒刷新一次用时，让人知道还在进行
+      Write-Host -NoNewline ("`r正在安装 Python（约 1～2 分钟）… 已用 {0} 秒" -f [int]((Get-Date) - $t0).TotalSeconds)
+      Start-Sleep 2
+    }
+    Write-Host ""
     Remove-Item $exe -ErrorAction SilentlyContinue
     Update-PathEnv
     $py = Find-Py
@@ -71,7 +97,10 @@ if (-not $src -or -not (Test-Path (Join-Path $src "runtime\lib\dg.py"))) {
   $tmp = Join-Path $env:TEMP ("purrge-" + [guid]::NewGuid())
   New-Item -ItemType Directory -Path $tmp | Out-Null
   Write-Host "正在下载 Purrge…"
-  Invoke-WebRequest "https://codeload.github.com/RabbittuX/purrge/zip/$branch" -OutFile (Join-Path $tmp "purrge.zip")
+  if (-not (Get-File "https://codeload.github.com/RabbittuX/purrge/zip/$branch" (Join-Path $tmp "purrge.zip"))) {
+    Write-Host "下载 Purrge 失败。请检查网络后重新运行这条命令。"
+    return   # 不用 exit：irm | iex 方式下 exit 会直接关掉用户的 PowerShell 窗口
+  }
   Expand-Archive (Join-Path $tmp "purrge.zip") -DestinationPath $tmp
   $src = (Get-ChildItem $tmp -Directory | Where-Object Name -like "purrge-*" | Select-Object -First 1).FullName
 }
