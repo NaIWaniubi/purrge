@@ -89,7 +89,7 @@
 > **请认准官方来源。** Purrge 只有两个官方仓库：`RabbittuX/purrge` 和 `RabbittuX/homebrew-tap`（作者名 RabbittuX，两个 t、结尾大写 X）。
 > - GitHub 上另有多个同名的 purrge 项目，与本项目无关，其中部分自称"清理垃圾"的项目来源不明，请勿安装。
 > - Homebrew 中的 `purge`（单个 r）是另一款软件；请使用完整名称 `rabbittux/tap/purrge`。
-> - PowerShell Gallery 中的官方模块名为 `Purrge`（作者 RabbittuX），页面地址 powershellgallery.com/packages/Purrge。
+> - PowerShell Gallery 中的官方模块名为 `Purrge`（作者 RabbittuX，发布账号 yin），页面地址 powershellgallery.com/packages/Purrge。
 > - 安装开始时会显示「Purrge 版本号 by RabbittuX　官方来源：GitHub RabbittuX/purrge」，可据此核对；也可随时运行 `purrge version` 查看。
 
 ### macOS
