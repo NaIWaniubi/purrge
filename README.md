@@ -20,6 +20,10 @@
 
 <br>
 
+## 🆕 v0.3.2 更新内容
+
+- **修复**：Claude Code 开启 verbose（详细输出）时，安装的连接测试和 `purrge scan` 的 AI 判断会崩溃（[#1](https://github.com/RabbittuX/purrge/issues/1)）。感谢 @jiangwanyutao 报告并提供修复方案。
+
 ## 🆕 v0.3.1 更新内容
 
 - **Windows 两行命令安装，不需要网址**：Purrge 已发布到微软官方的 PowerShell Gallery，`Install-Module Purrge` + `Install-Purrge` 即可安装；模块自带完整代码，安装时不再访问 GitHub。
