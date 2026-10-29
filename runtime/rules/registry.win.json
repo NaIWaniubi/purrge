@@ -38,7 +38,8 @@
   "protected": [
     "~/.claude", "~/.codex", "~/.ssh", "~/.gnupg", "~/.config", "~/.purrge", "~/.codebuddy", "~/.workbuddy",
     "~/.cache/whisper", "~/.cache/huggingface", "~/.cache/torch", "~/.ollama",
-    "~/OneDrive", "%APPDATA%/Microsoft", "%LOCALAPPDATA%/Microsoft",
+    "~/OneDrive", "%APPDATA%/Microsoft",
+    "%LOCALAPPDATA%/Microsoft/Credentials", "%LOCALAPPDATA%/Microsoft/Edge/User Data/Default/Login Data",
     "%LOCALAPPDATA%/JianyingPro/User Data/Projects", "%LOCALAPPDATA%/CapCut/User Data/Projects",
     "%LOCALAPPDATA%/Google/Chrome/User Data/Default/Login Data", "%SystemRoot%", "%ProgramFiles%", "%ProgramFiles(x86)%", "%ProgramData%"
   ]

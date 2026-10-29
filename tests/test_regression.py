@@ -606,6 +606,27 @@ class TestCLI(Base):
             self.assertIn(k, s)
 
 
+class TestWindowsRules(Base):
+    """保护名单不能把规则库里的缓存目录一起盖掉（否则规则永远不生效）。"""
+
+    @unittest.skipUnless(WIN, "Windows 规则只在 Windows 上生效")
+    def test_edge_cache_not_shadowed(self):
+        r = self.e.run(r'''
+        from common import expand, is_protected, load_config, load_rules
+        rules, cfg = load_rules(), load_config()
+        edge = next(x for x in rules["rules"] if x["id"] == "edge-cache")
+        out = {p.split("/")[-1]: is_protected(expand(p.replace("*", "Default")), cfg, rules) for p in edge["paths"]}
+        out.update({
+            "dpapi": is_protected(expand("%LOCALAPPDATA%/Microsoft/Credentials"), cfg, rules),
+            "appdata_ms": is_protected(expand("%APPDATA%/Microsoft"), cfg, rules),
+            "chrome": is_protected(expand("%LOCALAPPDATA%/Google/Chrome/User Data/Default/Cache"), cfg, rules),
+            "system": is_protected(expand("%SystemRoot%"), cfg, rules)})
+        print("@@" + json.dumps(out))
+        ''')
+        self.assertEqual(r, {"Cache": False, "Code Cache": False, "dpapi": True,
+                             "appdata_ms": True, "chrome": False, "system": True})
+
+
 class TestScanAndServer(Base):
     def test_scan_shape(self):
         (self.e.home / "Library/Caches/Big").mkdir(parents=True)
